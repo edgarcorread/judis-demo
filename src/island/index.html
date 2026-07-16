@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Capaz — Isla</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="island" class="collapsed">
+      <div id="pill">
+        <span id="pill-dot"></span>
+        <span id="pill-label">Capaz</span>
+        <span id="pill-count"></span>
+      </div>
+
+      <div id="panel">
+        <div id="panel-header">
+          <h1>Procesos aprendidos</h1>
+          <p id="panel-sub">Capaz usa estos procesos para guiar paso a paso</p>
+        </div>
+
+        <div id="flow-list"></div>
+
+        <div id="panel-actions">
+          <button id="btn-import">📄 Importar documento</button>
+          <button id="btn-record" disabled title="Próximamente: enséñale haciéndolo tú una vez">
+            🎥 Grabar demostración <span class="soon">pronto</span>
+          </button>
+        </div>
+
+        <div id="panel-status"></div>
+      </div>
+    </div>
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

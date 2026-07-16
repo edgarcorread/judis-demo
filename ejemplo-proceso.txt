@@ -1,0 +1,22 @@
+PROCESO INTERNO - Solicitud de vacaciones (RRHH)
+
+Cuando un empleado quiera pedir vacaciones tiene que hacerlo por el portal de Gmail
+corporativo enviando la solicitud al jefe directo con copia a RRHH. Importante:
+siempre con mínimo 15 días de anticipación.
+
+El empleado abre Gmail, le da al botón de Redactar que está arriba a la izquierda.
+En el campo Para pone el correo de su jefe directo. Luego en CC debe agregar
+rrhh@empresa.com (esto es obligatorio, si no llega a RRHH no queda registrado).
+
+En el asunto tiene que escribir exactamente: "Solicitud de vacaciones - [Nombre]"
+porque el filtro de RRHH clasifica por ese texto.
+
+En el cuerpo escribe las fechas de inicio y fin, y cuántos días hábiles son.
+Si tiene más de 15 días acumulados solo puede tomar máximo 15 por solicitud.
+
+Antes de enviar debe adjuntar el formato F-VAC-01 diligenciado (lo descarga de
+la intranet, sección Formatos). Se adjunta con el clip que está abajo en la
+ventana de redacción.
+
+Al final le da click al botón azul de Enviar. RRHH responde en máximo 3 días
+hábiles.

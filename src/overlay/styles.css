@@ -1,0 +1,93 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#overlay {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ── Hotspot: anillo pulsante + punto central + etiqueta ── */
+.hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hotspot .ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border: 3px solid #00e676;
+  border-radius: 50%;
+  animation: ring-pulse 1.6s ease-out infinite;
+}
+
+.hotspot .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00e676;
+  box-shadow: 0 0 12px rgba(0, 230, 118, 0.8);
+}
+
+.hotspot .label {
+  position: absolute;
+  top: 32px;
+  background: rgba(8, 10, 18, 0.92);
+  border: 1px solid rgba(0, 230, 118, 0.5);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #00e676;
+  white-space: nowrap;
+}
+
+@keyframes ring-pulse {
+  0%   { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ── Hotspot cumplido ── */
+.hotspot.hit .ring { display: none; }
+.hotspot.hit .dot { display: none; }
+.hotspot.hit .label { border-color: rgba(0, 230, 118, 0.9); }
+
+.hotspot .check {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #00e676;
+  color: #06130b;
+  font-size: 18px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: check-pop 0.9s ease-out forwards;
+}
+
+@keyframes check-pop {
+  0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  25%  { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  45%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
