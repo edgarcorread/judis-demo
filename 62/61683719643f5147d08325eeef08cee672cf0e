@@ -1,0 +1,25 @@
+tests/claude.test.ts
+  s_15f359fd836c25::t_b3446d5827f510 1-21,24,27,32-97
+  s_15f359fd836c25::t_40e7e04bc10d1f 22-23,25-26,28-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6261683719643f5147d08325eeef08cee672cf0e",
+  "prompts": {},
+  "humans": {
+    "h_e1ebe571e5a8ff": {
+      "author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  },
+  "sessions": {
+    "s_15f359fd836c25": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "1aa768b4-50c0-40d0-91d2-2f989521a734",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  }
+}
