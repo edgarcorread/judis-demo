@@ -1,0 +1,33 @@
+src/mem/styles.css
+  s_70428abddd289d::t_7d70a5e0c99499 1831-1849
+src/mem/luzia-widget.ts
+  s_70428abddd289d::t_e630b4a686ac64 32,48,51
+  s_70428abddd289d::t_e8b69e94a41491 101,113
+  s_70428abddd289d::t_6b3bb385bb61b9 196-203
+  s_70428abddd289d::t_03c43f0e66bd51 418,422-428,439-440,445-451,458,501-507
+  s_70428abddd289d::t_219bbf086f746e 185-193
+  s_70428abddd289d::t_2218fe73687e28 79
+src/mem/index.html
+  s_70428abddd289d::t_5200f11accd057 972
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9c4b60c01e22dbeaef85cf1912f817d10c2ea205",
+  "prompts": {},
+  "humans": {
+    "h_e1ebe571e5a8ff": {
+      "author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  },
+  "sessions": {
+    "s_70428abddd289d": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "9d822f2d-5458-4634-9e59-88336d26dbb8",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  }
+}
