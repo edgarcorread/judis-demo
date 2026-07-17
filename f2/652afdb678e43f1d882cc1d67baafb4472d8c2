@@ -1,0 +1,24 @@
+conductor/tracks.md
+  s_15f359fd836c25::t_cf47fcb40b9a94 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f2652afdb678e43f1d882cc1d67baafb4472d8c2",
+  "prompts": {},
+  "humans": {
+    "h_e1ebe571e5a8ff": {
+      "author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  },
+  "sessions": {
+    "s_15f359fd836c25": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "1aa768b4-50c0-40d0-91d2-2f989521a734",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  }
+}
