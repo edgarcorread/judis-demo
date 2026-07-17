@@ -1,0 +1,25 @@
+src/main/ipc.ts
+  s_b5588ac717b62b::t_90044ffed1eb31 203-204,211-212
+src/preload/index.ts
+  s_b5588ac717b62b::t_bb1b69f6d208d8 9
+src/companion/index.ts
+  s_b5588ac717b62b::t_2aa89b2c565d35 160-181,183-193,195-197,199-218,222-223
+src/mem/index.ts
+  s_b5588ac717b62b::t_46c63f5095ef79 704-725,727-740,742-761,765-766
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9663df9496d8a313b08c6b29891b453847d23e8b",
+  "prompts": {},
+  "sessions": {
+    "s_b5588ac717b62b": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "51c3803b-c323-406e-84d5-33efd307126c",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Luz Deniz <luz.deniz@pedidosya.com>"
+    }
+  }
+}
