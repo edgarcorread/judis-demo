@@ -1,0 +1,41 @@
+src/mem/index.ts
+  s_b5588ac717b62b::t_b7fe384a253447 44
+  s_c3deb8e8f806a3::t_bac8aa3224906f 702,704-705,725-726,728-731,734-736,763-765
+  s_b5588ac717b62b::t_d0c08343284bef 703,706-709,712-718,720,724,727,732-733,737,739
+  s_b5588ac717b62b::t_8107aa8c419e8f 710-711,719,721-723,738,740-762
+src/companion/index.ts
+  s_c3deb8e8f806a3::t_70f2cf14c53c20 158,160-161,182,184-188,191-193,220-222
+  s_b5588ac717b62b::t_4f64fd24ebae5d 159,162-165,168-174,176,180-181,183,189-190,194,196
+  s_b5588ac717b62b::t_bb2775f126fae3 166-167,175,177-179,195,197-219
+  s_b5588ac717b62b::t_7a17ff33b3255e 46
+src/services/ai/claude.ts
+  s_b5588ac717b62b::t_7d0f9a9e9f02b9 158,169-178
+src/main/ipc.ts
+  s_b5588ac717b62b::t_adcebae102fce9 2
+src/main/index.ts
+  s_b5588ac717b62b::t_e0bfa4ac79d105 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "da1b8f4d0075339e62ab2b8d790ff8faa2e94bc5",
+  "prompts": {},
+  "sessions": {
+    "s_b5588ac717b62b": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "51c3803b-c323-406e-84d5-33efd307126c",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Luz Deniz <luz.deniz@pedidosya.com>"
+    },
+    "s_c3deb8e8f806a3": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "f21af6c1-c805-4c57-9099-31188169455e",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": null
+    }
+  }
+}
