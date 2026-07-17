@@ -1,0 +1,32 @@
+conductor/tracks/optional_chat_20260717/metadata.json
+  s_17199e4c3ad799::t_acb446543ac0e3 1-8
+conductor/tracks/optional_chat_20260717/plan.md
+  s_17199e4c3ad799::t_90dd6428ade126 1-46
+conductor/tracks.md
+  s_17199e4c3ad799::t_d8c93d8000d0d4 1-8
+conductor/tracks/optional_chat_20260717/index.md
+  s_17199e4c3ad799::t_ce3c6157a0590c 1-5
+conductor/tracks/optional_chat_20260717/spec.md
+  s_17199e4c3ad799::t_4bc96d4953846a 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7b7cb46360821b0223caa203c01390a77f2e881b",
+  "prompts": {},
+  "humans": {
+    "h_e1ebe571e5a8ff": {
+      "author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  },
+  "sessions": {
+    "s_17199e4c3ad799": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "ff53d158-a484-4ac8-90d3-82e0f3823631",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  }
+}
