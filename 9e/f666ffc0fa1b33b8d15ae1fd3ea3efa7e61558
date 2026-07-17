@@ -1,0 +1,55 @@
+src/mem/styles.css
+  s_70428abddd289d::t_c7816fb9de736b 1682-1918,1920-1923,1925-1927,1936-1937,1939-1989
+  s_70428abddd289d::t_42d180fb48a451 1919,1928-1935,1938
+  s_70428abddd289d::t_aa19a636de4e71 1924
+src/main/ipc.ts
+  s_70428abddd289d::t_cb1b689994e434 155,206,211-215,219,229-230
+  s_70428abddd289d::t_2b9cc26cc6a8a2 358,366
+  s_70428abddd289d::t_f369b5391af7b6 27-34
+src/preload/index.ts
+  s_70428abddd289d::t_4933df19d38d4b 12-19
+  s_70428abddd289d::t_fc811bb54fb078 67
+src/mem/index.ts
+  s_70428abddd289d::t_5ad483f912483c 191-192
+  s_70428abddd289d::t_f51e10c5f5b8a6 119-127
+  s_70428abddd289d::t_bde5a10afc307c 30
+  s_70428abddd289d::t_19b9273f214bd4 504-505,512-515,522-525
+  s_70428abddd289d::t_7b08b9ff4c8176 506-511
+  s_70428abddd289d::t_6d2585810b234b 176
+  s_70428abddd289d::t_35d8dfbbde9d2d 543-544
+  s_70428abddd289d::t_455a4190fee163 108-118,128-134,150-157
+  s_70428abddd289d::t_53eeda6347bd71 3,29
+  s_70428abddd289d::t_ae14f1dfcd8c58 239-240,242-249
+src/mem/luzia-widget.ts
+  s_70428abddd289d::t_d057a9f5de80d5 391,394-396,398-404,413-424,426-436,446,453,460,462,466-467,472,483-485,488-492
+  s_70428abddd289d::t_0f0ee9804969be 95
+  s_70428abddd289d::t_c1c0f96e7b203d 233
+  s_70428abddd289d::t_c094200a6db822 497
+  s_70428abddd289d::t_133f80d5fda60d 227-232,234-251,253,255-268
+  s_70428abddd289d::t_b1a5ebe9fb2349 367
+  s_70428abddd289d::t_c61455bb361741 1-94,96-226,252,254,269-366,368-390,392-393,397,405-412,425,437-445,447-452,454-459,461,463-465,468-471,473-482,486-487,493-496,498-542
+src/mem/index.html
+  s_70428abddd289d::t_ec7c3c1daebcbf 954-981,983-985
+  s_70428abddd289d::t_d6b095a07e8698 982
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9ef666ffc0fa1b33b8d15ae1fd3ea3efa7e61558",
+  "prompts": {},
+  "humans": {
+    "h_e1ebe571e5a8ff": {
+      "author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  },
+  "sessions": {
+    "s_70428abddd289d": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "9d822f2d-5458-4634-9e59-88336d26dbb8",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  }
+}
