@@ -88,8 +88,8 @@
   /* ─────────────────────────────────────────────────
      SUPABASE ANALYTICS TRACKING
   ───────────────────────────────────────────────── */
-  const SUPABASE_URL = 'YOUR_SUPABASE_URL'
-  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'
+  const SUPABASE_URL = 'https://pfuifebtpslzksuwcsxh.supabase.co'
+  const SUPABASE_ANON_KEY = 'sb_publishable_6cek6h4_R1SeDniV2Dmxvg_hMq3Gh-Z'
 
   let sessionId = sessionStorage.getItem('judis_session_id')
   if (!sessionId) {
