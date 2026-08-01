@@ -421,6 +421,9 @@
   ───────────────────────────────────────────────── */
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
   let recognition = null
+  let receivedSpeechResult = false
+  let recordingStartTime = 0
+
   if (SpeechRecognition) {
     recognition = new SpeechRecognition()
     recognition.continuous = false
@@ -428,6 +431,7 @@
     recognition.lang = 'es-ES'
 
     recognition.onresult = (event) => {
+      receivedSpeechResult = true
       const transcript = event.results[0][0].transcript
       console.log('[J.U.D.I.S Speech] Result:', transcript)
       processSpokenCommand(transcript)
@@ -436,19 +440,31 @@
     recognition.onerror = (event) => {
       console.warn('[J.U.D.I.S Speech] Error:', event.error)
       updateCompanionState('speaking')
-      updateCompanionBubble('Disculpa, no logré escucharte bien. ¿Podrías repetirlo?')
+      if (event.error === 'not-allowed') {
+        updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.')
+      } else {
+        updateCompanionBubble('Disculpa, no logré escucharte bien. ¿Podrías volver a intentarlo?')
+      }
     }
 
     recognition.onend = () => {
-      if (companionState === 'listening') {
-        updateCompanionState('thinking')
-      }
+      // If we stopped but didn't receive any speech transcription
+      setTimeout(() => {
+        if (companionState === 'listening' || companionState === 'thinking') {
+          if (!receivedSpeechResult) {
+            updateCompanionState('speaking')
+            updateCompanionBubble('No detecté ninguna palabra. Mantén presionado mientras hablas y suelta al terminar. 🎙️')
+          }
+        }
+      }, 800)
     }
   }
 
   async function startRecording() {
     if (isHotkeyActive) return
     isHotkeyActive = true
+    receivedSpeechResult = false
+    recordingStartTime = Date.now()
     updateCompanionState('listening')
 
     // Check if browser context allows microphone/speech access (HTTPS or localhost)
@@ -872,7 +888,17 @@
       window.addEventListener('touchcancel', handlePressEnd)
       window.addEventListener('blur', () => {
         if (isHotkeyActive) {
-          stopAndProcessRecording()
+          const duration = Date.now() - recordingStartTime
+          if (duration < 1500) {
+            isHotkeyActive = false
+            if (recognition) {
+              try { recognition.abort() } catch(e) {}
+            }
+            updateCompanionState('speaking')
+            updateCompanionBubble('Permiso de micrófono solicitado. Acéptalo en tu pantalla y vuelve a mantener presionado para hablarme. 🎙️')
+          } else {
+            stopAndProcessRecording()
+          }
         }
       })
     }
