@@ -516,7 +516,11 @@
     const rec = new SpeechRecognition()
     rec.continuous = false
     rec.interimResults = false
-    rec.lang = 'es-419'
+    // 'es-419' (generic Latin America) isn't a real locale Apple's on-device
+    // dictation engine recognizes, so iOS Safari/Chrome silently returns no
+    // transcript for every session — it only "worked" in testing on Chrome
+    // desktop because that uses Google's cloud speech backend instead.
+    rec.lang = 'es-MX'
 
     rec.onstart = () => {
       micPermissionGranted = true
