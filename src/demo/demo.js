@@ -886,6 +886,7 @@
 
       const handleTouchMove = (e) => {
         if (!isJudisEnabled || !e.touches.length) return
+        e.preventDefault()
         
         const touch = e.touches[0]
         const deltaX = touch.clientX - touchStartX
