@@ -1,0 +1,21 @@
+src/demo/demo.js
+  s_c73dc86e1906d5::t_509e1f812a139a 469-481
+src/mem/index.ts
+  s_c73dc86e1906d5::t_f182170e53e278 287-298,300-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "028ef5b49a15a5d4cca7e00a73a175b1fd5e5a59",
+  "prompts": {},
+  "sessions": {
+    "s_c73dc86e1906d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9b6180-89e0-4616-9c63-f48678d4603a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "edgarcorread <edgarcorread@gmail.com>"
+    }
+  }
+}
