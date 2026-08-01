@@ -472,6 +472,11 @@
   let recordingStartTime = 0
   let micPermissionGranted = false
   let lastRecognitionEndedAt = 0
+  let recognitionStartedThisSession = false
+
+  function logLine(text) {
+    return `<div class="comp-log">🪵 ${text}</div>`
+  }
 
   // Builds a fresh recognizer for every recording. Reusing one long-lived
   // instance across presses is flaky on real mobile browsers — a second
@@ -486,6 +491,7 @@
 
     rec.onstart = () => {
       micPermissionGranted = true
+      recognitionStartedThisSession = true
     }
 
     rec.onresult = (event) => {
@@ -501,11 +507,16 @@
         recordingCancelledByDrag = false
         return
       }
+      if (recordingAbortedByFailsafe) {
+        recordingAbortedByFailsafe = false
+        return
+      }
+      const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
       updateCompanionState('speaking')
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.')
+        updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.' + logLine(`error: ${event.error} · mic iniciado: ${recognitionStartedThisSession}`))
       } else {
-        updateCompanionBubble(`No te escuché nada (${event.error}), intenta de nuevo 🎙️`)
+        updateCompanionBubble(`No te escuché nada, intenta de nuevo 🎙️` + logLine(`error: ${event.error} · duración: ${elapsed}s · mic iniciado: ${recognitionStartedThisSession}`))
       }
     }
 
@@ -515,8 +526,12 @@
       setTimeout(() => {
         if (companionState === 'listening' || companionState === 'thinking') {
           if (!receivedSpeechResult) {
+            const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
             updateCompanionState('speaking')
-            updateCompanionBubble('No te escuché nada (sin error, sesión vacía), intenta de nuevo 🎙️')
+            updateCompanionBubble(
+              '<div class="comp-heard">⚠️ No detecté ninguna palabra</div>Intenta de nuevo, hablando un poco más fuerte 🎙️' +
+              logLine(`sin error nativo · duración: ${elapsed}s · mic iniciado: ${recognitionStartedThisSession}`)
+            )
           }
         }
       }, 1800)
@@ -529,6 +544,7 @@
     if (isHotkeyActive) return
     isHotkeyActive = true
     receivedSpeechResult = false
+    recognitionStartedThisSession = false
     recordingStartTime = Date.now()
     updateCompanionState('listening')
 
@@ -584,6 +600,7 @@
   }
 
   let thinkingTimeout = null
+  let recordingAbortedByFailsafe = false
 
   function stopAndProcessRecording() {
     if (!isHotkeyActive) return
@@ -599,9 +616,10 @@
       if (companionState === 'thinking' && !receivedSpeechResult) {
         console.warn('[J.U.D.I.S Speech] Failsafe triggered: SpeechRecognition hung.')
         if (recognition) {
+          recordingAbortedByFailsafe = true
           try { recognition.abort() } catch (e) {}
         }
-        simulateTranscriptionResponse()
+        simulateTranscriptionResponse('se abortó la grabación, tardó demasiado en responder')
       }
     }, 4500)
 
@@ -617,7 +635,7 @@
           recognition.stop()
         } catch (e) {
           console.warn('SpeechRecognition stop failed', e)
-          simulateTranscriptionResponse()
+          simulateTranscriptionResponse('no se pudo detener la grabación correctamente')
         }
       }, isMobile ? 1000 : 400)
     } else {
@@ -663,14 +681,15 @@
   function processSpokenCommand(transcript) {
     updateCompanionState('speaking')
     const text = normalizeText(transcript)
+    const heard = `<div class="comp-heard">🎧 Te escuché decir: "<em>${transcript}</em>"</div>`
 
     if (text.includes('agendar') || text.includes('llamada') || text.includes('reunion') || text.includes('cita')) {
-      updateCompanionBubble('¡Entendido! Señalé el botón de <strong>"Agendar"</strong> en la pantalla. Haz clic allí para programar nuestra llamada. 📅')
+      updateCompanionBubble(heard + '¡Entendido! Señalé el botón de <strong>"Agendar"</strong> en la pantalla. Haz clic allí para programar nuestra llamada. 📅')
       highlightScheduleButton()
     } else if (text.includes('beneficio') || text.includes('ventajas') || text.includes('funcion') || text.includes('funciones') || text.includes('para que sirve') || text.includes('que es esto') || text.includes('que es judis') || text.includes('que eres') || text.includes('que haces') || text.includes('quien eres')) {
-      updateCompanionBubble('Soy un asistente que te ayuda a finalizar las acciones de usuarios en tu página, tipo guiarte en una compra o solucionar dudas complejas sin fricciones. 🚀')
+      updateCompanionBubble(heard + 'Soy un asistente que te ayuda a finalizar las acciones de usuarios en tu página, tipo guiarte en una compra o solucionar dudas complejas sin fricciones. 🚀')
     } else if (text.includes('ayud') || text.includes('objeto') || text.includes('producto') || text.includes('mostrar') || text.includes('buscar') || text.includes('guiar') || text.includes('iniciar') || text.includes('comenzar') || text.includes('detectar')) {
-      updateCompanionBubble('¡Perfecto! Te guiaré secuencialmente para encontrar los 3 productos en la pantalla. 🚀')
+      updateCompanionBubble(heard + '¡Perfecto! Te guiaré secuencialmente para encontrar los 3 productos en la pantalla. 🚀')
       setTimeout(() => {
         if (!chrono2.running) {
           startChrono(2)
@@ -679,17 +698,19 @@
         triggerSequentialGuide()
       }, 1500)
     } else {
-      const isMobile = window.innerWidth <= 600
-      const msg = isMobile
-        ? `Escuché: "<em>${transcript}</em>". Di "ayuda" 😊`
-        : `Escuché que dijiste: "<em>${transcript}</em>". Pero para ayudarte, necesito que me pidas ayuda para encontrar los objetos. 😊`;
+      const msg = heard + 'Debes decir <strong>"ayuda"</strong> para que te ayude a encontrar los objetos. 😊'
       updateCompanionBubble(msg);
     }
   }
 
-  function simulateTranscriptionResponse() {
+  function simulateTranscriptionResponse(errorReason) {
     updateCompanionState('speaking')
-    updateCompanionBubble('Entendido. Te guiaré secuencialmente para encontrar los 3 productos más rápido. 🚀')
+    const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
+    const errorNote = errorReason
+      ? `<div class="comp-heard">⚠️ No pude grabarte: ${errorReason}</div>` +
+        logLine(`duración: ${elapsed}s · mic iniciado: ${recognitionStartedThisSession}`)
+      : ''
+    updateCompanionBubble(errorNote + 'Te guiaré igual para encontrar los 3 productos más rápido. 🚀')
 
     // Automatically trigger sequential guide step 1 and start chrono 2
     setTimeout(() => {

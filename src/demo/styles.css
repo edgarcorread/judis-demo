@@ -246,6 +246,8 @@ body{
 .comp-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);flex:1}
 .comp-hint{font-size:10px;color:rgba(255,255,255,.25);white-space:nowrap}
 .comp-answer{padding:0 12px 12px;font-size:13px;color:#fff;line-height:1.55;word-break:break-word;white-space:pre-wrap}
+.comp-heard{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:6px;font-style:italic}
+.comp-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:rgba(255,255,255,.4);margin-top:6px}
 
 /* ── Responsive ────────────────────────────────── */
 @media(max-width:600px){
@@ -270,7 +272,7 @@ body{
     padding: 8px 12px !important;
     font-size: 12px !important;
     display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
+    -webkit-line-clamp: 6 !important;
     -webkit-box-orient: vertical !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
