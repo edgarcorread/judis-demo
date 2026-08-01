@@ -836,6 +836,11 @@
       const handlePressStart = (e) => {
         if (!isJudisEnabled) return
         e.preventDefault()
+        // If already listening (e.g., got stuck during native permission dialog blur), tap again to toggle stop
+        if (companionState === 'listening') {
+          stopAndProcessRecording()
+          return
+        }
         if (companionState === 'idle' || companionState === 'speaking') {
           startRecording()
         }
@@ -843,19 +848,26 @@
 
       const handlePressEnd = (e) => {
         if (!isJudisEnabled) return
-        e.preventDefault()
-        if (companionState === 'listening') {
+        if (e.target === compOrbEl) {
+          e.preventDefault()
+        }
+        if (isHotkeyActive) {
           stopAndProcessRecording()
         }
       }
 
       compOrbEl.addEventListener('mousedown', handlePressStart)
-      compOrbEl.addEventListener('mouseup', handlePressEnd)
-      compOrbEl.addEventListener('mouseleave', handlePressEnd)
-
       compOrbEl.addEventListener('touchstart', handlePressStart, { passive: false })
-      compOrbEl.addEventListener('touchend', handlePressEnd, { passive: false })
-      compOrbEl.addEventListener('touchcancel', handlePressEnd, { passive: false })
+
+      // Global window listeners for robust release, blur (permission prompt interrupts) and cancel events
+      window.addEventListener('mouseup', handlePressEnd)
+      window.addEventListener('touchend', handlePressEnd)
+      window.addEventListener('touchcancel', handlePressEnd)
+      window.addEventListener('blur', () => {
+        if (isHotkeyActive) {
+          stopAndProcessRecording()
+        }
+      })
     }
 
     // Active pill toggling trigger
