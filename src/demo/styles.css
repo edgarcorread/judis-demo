@@ -258,7 +258,23 @@ body{
   .cmp-block{min-width:110px;padding:10px}
   .cmp-time{font-size:24px}
   .impact-box{flex-direction:column;text-align:center}
-  .comp-bubble{width:250px}
+  .comp-bubble{
+    width: auto !important;
+    max-width: 220px !important;
+    margin: 0 !important;
+  }
+  .comp-bubble-head {
+    display: none !important;
+  }
+  .comp-answer {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
   .wallet-card{padding:24px 20px}
   .judis-features-grid{grid-template-columns:1fr !important}
   .store-grid{grid-template-columns:repeat(4,1fr) !important;gap:6px !important}
@@ -273,7 +289,10 @@ body{
     bottom:auto !important;
     right:auto !important;
     transform:translateY(-50%) !important;
-    align-items:flex-start !important;
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important;
+    gap: 8px !important;
   }
   .comp-orb {
     cursor:pointer !important;
