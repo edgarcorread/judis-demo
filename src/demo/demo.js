@@ -502,10 +502,10 @@
         return
       }
       updateCompanionState('speaking')
-      if (event.error === 'not-allowed') {
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.')
       } else {
-        updateCompanionBubble('No te escuché nada, intenta de nuevo 🎙️')
+        updateCompanionBubble(`No te escuché nada (${event.error}), intenta de nuevo 🎙️`)
       }
     }
 
@@ -516,7 +516,7 @@
         if (companionState === 'listening' || companionState === 'thinking') {
           if (!receivedSpeechResult) {
             updateCompanionState('speaking')
-            updateCompanionBubble('No te escuché nada, intenta de nuevo 🎙️')
+            updateCompanionBubble('No te escuché nada (sin error, sesión vacía), intenta de nuevo 🎙️')
           }
         }
       }, 1800)
