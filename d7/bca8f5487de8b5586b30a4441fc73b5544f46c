@@ -1,0 +1,33 @@
+src/demo/styles.css
+  s_438c00f5779ee0::t_dac0d48a7dd5ac 275
+  s_438c00f5779ee0::t_439b7b273afcd8 250
+  s_438c00f5779ee0::t_78ad512192d45a 249
+src/demo/demo.js
+  s_438c00f5779ee0::t_0e5c46e05c63b1 510-513
+  s_438c00f5779ee0::t_01259041bbc1fa 475-479
+  s_438c00f5779ee0::t_04babfad8383cc 706,709,712-713
+  s_438c00f5779ee0::t_7dcfd3231c14b6 708,710-711
+  s_438c00f5779ee0::t_e02fbc21b9eacf 701
+  s_438c00f5779ee0::t_b2e1c69e68dfe4 514,517,519,529,531-534
+  s_438c00f5779ee0::t_0598a02dd93939 687,690,692
+  s_438c00f5779ee0::t_a4a05cac48fa97 494
+  s_438c00f5779ee0::t_590b40cd97f33b 603,619,622,638
+  s_438c00f5779ee0::t_4c8ae98a9f49ae 684
+  s_438c00f5779ee0::t_333d404309865f 547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "d7bca8f5487de8b5586b30a4441fc73b5544f46c",
+  "prompts": {},
+  "sessions": {
+    "s_438c00f5779ee0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef045762-a008-4a55-9b9b-446c2fa9988a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "edgarcorread <edgarcorread@gmail.com>"
+    }
+  }
+}
