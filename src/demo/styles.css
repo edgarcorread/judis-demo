@@ -361,3 +361,65 @@ body{
   text-align: left !important;
   font-weight: 800 !important;
 }
+
+/* ── Close Bubble Buttons ───────────────────────── */
+.comp-close-btn-mobile {
+  display: none;
+  position: absolute;
+  top: -24px;
+  left: 20px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 18px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.comp-close-btn-mobile:hover {
+  background: var(--pink);
+  border-color: var(--pink);
+  box-shadow: 0 0 10px var(--pink-glow);
+}
+@media (max-width: 600px) {
+  .comp-close-btn-mobile.visible {
+    display: flex;
+  }
+}
+
+.close-bubble-web {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--txt);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 12px;
+  padding: 0;
+}
+.close-bubble-web:hover {
+  background: var(--pink-soft);
+  border-color: var(--pink);
+  color: var(--pink);
+  box-shadow: 0 0 10px var(--pink-glow);
+}
+@media (min-width: 601px) {
+  .close-bubble-web.visible {
+    display: flex;
+  }
+}
+

@@ -316,6 +316,23 @@
     }
 
     if (pillTxt) pillTxt.textContent = statusTexts[state] || ''
+
+    // Toggle bubble close buttons visibility
+    const btnWeb = document.getElementById('btn-close-bubble-web')
+    const btnMobile = document.getElementById('btn-close-bubble-mobile')
+    if (state === 'speaking') {
+      if (btnWeb) btnWeb.classList.add('visible')
+      if (btnMobile) btnMobile.classList.add('visible')
+    } else {
+      if (btnWeb) btnWeb.classList.remove('visible')
+      if (btnMobile) btnMobile.classList.remove('visible')
+    }
+  }
+
+  function hideSpeechBubble() {
+    const bubble = companionEl ? companionEl.querySelector('.comp-bubble') : null
+    if (bubble) bubble.classList.add('hidden')
+    updateCompanionState('idle')
   }
 
   function updateCompanionBubble(text) {
@@ -832,6 +849,25 @@
         toggleJudis()
       })
     })
+
+    // Close bubble buttons event listeners
+    const closeWebBtn = document.getElementById('btn-close-bubble-web')
+    if (closeWebBtn) {
+      closeWebBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        hideSpeechBubble()
+      })
+    }
+
+    const closeMobileBtn = document.getElementById('btn-close-bubble-mobile')
+    if (closeMobileBtn) {
+      closeMobileBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        hideSpeechBubble()
+      })
+    }
 
     console.log('[J.U.D.I.S Demo] initialized successfully.')
   }
