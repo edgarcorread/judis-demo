@@ -498,12 +498,27 @@
     }
   }
 
+  let thinkingTimeout = null
+
   function stopAndProcessRecording() {
     if (!isHotkeyActive) return
     isHotkeyActive = false
     updateCompanionState('thinking')
 
     const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+    if (thinkingTimeout) clearTimeout(thinkingTimeout)
+
+    // Failsafe: if SpeechRecognition hangs on mobile (very common in iOS), fallback to simulation after 3.5 seconds
+    thinkingTimeout = setTimeout(() => {
+      if (companionState === 'thinking' && !receivedSpeechResult) {
+        console.warn('[J.U.D.I.S Speech] Failsafe triggered: SpeechRecognition hung.')
+        if (recognition) {
+          try { recognition.abort() } catch (e) {}
+        }
+        simulateTranscriptionResponse()
+      }
+    }, 3500)
 
     if (!isSecure) {
       setTimeout(simulateTranscriptionResponse, 1000)
