@@ -456,7 +456,7 @@
             updateCompanionBubble('No detecté ninguna palabra. Mantén presionado mientras hablas y suelta al terminar. 🎙️')
           }
         }
-      }, 1800)
+      }, 1000)
     }
   }
 
@@ -534,7 +534,7 @@
           console.warn('SpeechRecognition stop failed', e)
           simulateTranscriptionResponse()
         }
-      }, isMobile ? 1000 : 0)
+      }, isMobile ? 300 : 0)
     } else {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.onstop = () => {
@@ -861,8 +861,8 @@
           startChrono(2)
           updateCompanionState('speaking')
           const askMsg = window.innerWidth <= 600
-            ? 'Pídeme <strong>"ayuda"</strong> manteniendo presionada mi foto.'
-            : 'Pídeme <strong>"ayuda"</strong> presionando las teclas <strong>J + U</strong>.'
+            ? 'Mantén presionado, di <strong>"ayuda"</strong> y te ayudo a encontrar los 3 objetos.'
+            : 'Presiona J+U, di <strong>"ayuda"</strong> y te ayudo a encontrar los 3 objetos.'
           updateCompanionBubble(askMsg)
         }
       })
