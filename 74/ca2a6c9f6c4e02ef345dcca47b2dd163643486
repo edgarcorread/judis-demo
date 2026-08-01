@@ -1,0 +1,33 @@
+src/demo/demo.js
+  s_3a6909ca426c59::t_e9332037a14052 585
+  s_3a6909ca426c59::t_acc0e877e112d7 931-936,939,947,954-959,961-982,984,989-1005,1015-1022,1030,1033
+  s_3a6909ca426c59::t_6e868920d2dd3d 926
+  s_3a6909ca426c59::t_f27e4101ed3b6d 960
+  s_3a6909ca426c59::t_0d3cd3b8d51fe9 983
+  s_3a6909ca426c59::t_d8de1ce7c5fc3a 985-988
+  s_3a6909ca426c59::t_b2b71b100a4bbd 66-75
+  s_3a6909ca426c59::t_2d6bad61ef96f5 276-283,308-331
+  s_3a6909ca426c59::t_75982b80ebb3f0 479
+  s_3a6909ca426c59::t_07ea4a9c870b01 103-110,332
+  s_3a6909ca426c59::t_3bd2028aac5ca7 605,607,610,612
+  s_3a6909ca426c59::t_3ec52fac2ed6de 1011
+  s_3a6909ca426c59::t_cf1ff9918f77cd 333
+src/demo/styles.css
+  s_3a6909ca426c59::t_8b34784993334e 284-285,288-289,291-292,298-302,304-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "74ca2a6c9f6c4e02ef345dcca47b2dd163643486",
+  "prompts": {},
+  "sessions": {
+    "s_3a6909ca426c59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "830720af-54ff-41d5-bf66-ce7ecf0f181a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "edgarcorread <edgarcorread@gmail.com>"
+    }
+  }
+}
