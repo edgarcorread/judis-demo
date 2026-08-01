@@ -456,7 +456,7 @@
             updateCompanionBubble('No detecté ninguna palabra. Mantén presionado mientras hablas y suelta al terminar. 🎙️')
           }
         }
-      }, 800)
+      }, 1800)
     }
   }
 
@@ -509,7 +509,7 @@
 
     if (thinkingTimeout) clearTimeout(thinkingTimeout)
 
-    // Failsafe: if SpeechRecognition hangs on mobile (very common in iOS), fallback to simulation after 3.5 seconds
+    // Failsafe: if SpeechRecognition hangs on mobile (very common in iOS), fallback to simulation after 4.5 seconds
     thinkingTimeout = setTimeout(() => {
       if (companionState === 'thinking' && !receivedSpeechResult) {
         console.warn('[J.U.D.I.S Speech] Failsafe triggered: SpeechRecognition hung.')
@@ -518,7 +518,7 @@
         }
         simulateTranscriptionResponse()
       }
-    }, 3500)
+    }, 4500)
 
     if (!isSecure) {
       setTimeout(simulateTranscriptionResponse, 1000)
@@ -534,7 +534,7 @@
           console.warn('SpeechRecognition stop failed', e)
           simulateTranscriptionResponse()
         }
-      }, isMobile ? 450 : 0)
+      }, isMobile ? 1000 : 0)
     } else {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.onstop = () => {
