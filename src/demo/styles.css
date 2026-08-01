@@ -77,10 +77,10 @@ body{
 /* ── Target badges ─────────────────────────────── */
 .targets-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .target-badge{display:flex;align-items:center;gap:6px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:4px 10px;font-size:11px;font-weight:500;transition:all .3s}
-.target-badge.found{background:var(--green-soft);border-color:var(--green);box-shadow:0 0 16px var(--green-glow)}
+.target-badge.found{background:var(--pink-soft);border-color:var(--pink);box-shadow:0 0 16px var(--pink-glow)}
 .target-emoji{font-size:14px}.target-name{color:var(--txt2)}
-.target-badge.found .target-name{color:var(--green)}
-.target-check{display:none;width:16px;height:16px;background:var(--green);color:#000;font-size:9px;font-weight:900;border-radius:50%;align-items:center;justify-content:center}
+.target-badge.found .target-name{color:var(--pink)}
+.target-check{display:none;width:16px;height:16px;background:var(--pink);color:#fff;font-size:9px;font-weight:900;border-radius:50%;align-items:center;justify-content:center}
 .target-badge.found .target-check{display:flex}
 
 /* ── Chronometer ───────────────────────────────── */
@@ -105,13 +105,13 @@ body{
 .store-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
 .product-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 4px;cursor:pointer;transition:all .2s;text-align:center;position:relative;overflow:visible;user-select:none}
 .product-card:hover{border-color:var(--border-b);background:rgba(255,255,255,.07);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.4)}
-.product-card.found-item{background:var(--green-soft);border-color:var(--green);box-shadow:0 0 20px var(--green-glow);pointer-events:none;transform:scale(1.04)}
+.product-card.found-item{background:var(--pink-soft);border-color:var(--pink);box-shadow:0 0 20px var(--pink-glow);pointer-events:none;transform:scale(1.04)}
 .product-card.wrong-click{animation:shake .38s ease;border-color:var(--red)}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 .p-emoji{font-size:24px;display:block;margin-bottom:4px;line-height:1}
 .p-name{font-size:10px;color:var(--txt2);font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-price{font-size:11px;font-weight:700;color:var(--txt);margin-top:2px}
-.product-card.found-item .p-name{color:var(--green)}
+.product-card.found-item .p-name{color:var(--pink)}
 
 /* Hotspots Luzia */
 .hotspot-ring{position:absolute;inset:-6px;border:2px solid var(--pink);border-radius:calc(var(--r-md) + 6px);animation:hRing 1.4s ease infinite;pointer-events:none;z-index:5}
