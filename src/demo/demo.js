@@ -469,6 +469,7 @@
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
   let recognition = null
   let receivedSpeechResult = false
+  let accumulatedTranscript = ''
   let recordingStartTime = 0
   let micPermissionGranted = false
   let lastRecognitionEndedAt = 0
@@ -514,7 +515,13 @@
   // down), so subsequent attempts just time out with no result.
   function createRecognition() {
     const rec = new SpeechRecognition()
-    rec.continuous = false
+    // Continuous mode keeps listening for as long as the button is held,
+    // instead of auto-stopping after the first detected phrase/pause — that
+    // single-utterance mode (continuous=false) was cutting people off (or
+    // producing zero transcript) whenever they took more than a couple
+    // seconds to speak. We finalize manually via recognition.stop() on
+    // release; see stopAndProcessRecording.
+    rec.continuous = true
     rec.interimResults = false
     // 'es-419' (generic Latin America) isn't a real locale Apple's on-device
     // dictation engine recognizes, so iOS Safari/Chrome silently returns no
@@ -529,9 +536,15 @@
 
     rec.onresult = (event) => {
       receivedSpeechResult = true
-      const transcript = event.results[0][0].transcript
-      console.log('[J.U.D.I.S Speech] Result:', transcript)
-      processSpokenCommand(transcript)
+      // In continuous mode, event.results holds every final phrase captured
+      // so far this session (not just the newest one) — join them all into
+      // one transcript rather than assuming index 0 is the whole utterance.
+      let transcript = ''
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript
+      }
+      accumulatedTranscript = transcript.trim()
+      console.log('[J.U.D.I.S Speech] Transcript so far:', accumulatedTranscript)
     }
 
     rec.onerror = (event) => {
@@ -564,6 +577,13 @@
     rec.onend = () => {
       lastRecognitionEndedAt = Date.now()
 
+      // Session actually captured something — finalize it now that we know
+      // no more results are coming, regardless of how long the hold lasted.
+      if (receivedSpeechResult && accumulatedTranscript) {
+        processSpokenCommand(accumulatedTranscript)
+        return
+      }
+
       if (canAutoRestart()) {
         recognitionRestartCount++
         console.warn(`[J.U.D.I.S Speech] No result yet, auto-restarting (attempt ${recognitionRestartCount})`)
@@ -593,6 +613,7 @@
     if (isHotkeyActive) return
     isHotkeyActive = true
     receivedSpeechResult = false
+    accumulatedTranscript = ''
     recognitionStartedThisSession = false
     recognitionRestartCount = 0
     recognitionFatalError = false
