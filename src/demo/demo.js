@@ -63,6 +63,16 @@
   let guideStep = 0
   let companionState = 'idle' // idle, listening, thinking, speaking
 
+  // Mobile drag-to-reposition state
+  let hasCustomMobilePosition = false
+  let isDraggingCompanion = false
+  let dragMoveDetected = false
+  let dragStartX = 0
+  let dragStartY = 0
+  let pressHoldTimer = null
+  const DRAG_MOVE_THRESHOLD = 10
+  const PRESS_HOLD_DELAY = 150
+
   // Mouse tracking
   let mouseX = window.innerWidth - 100
   let mouseY = window.innerHeight - 100
@@ -88,6 +98,14 @@
 
   function fmtSecs(ms) {
     return `${(ms / 1000).toFixed(1)}s`
+  }
+
+  function normalizeText(str) {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .trim()
   }
 
   /* ─────────────────────────────────────────────────
@@ -255,10 +273,14 @@
   function updateCompanionPosition(x, y) {
     if (!companionEl) return
     if (window.innerWidth <= 600) {
-      companionEl.style.left = ''
-      companionEl.style.top = ''
-      companionEl.style.bottom = ''
-      companionEl.style.right = ''
+      // Once the user has dragged the companion on mobile, keep that spot
+      // instead of snapping back to the default CSS position.
+      if (!hasCustomMobilePosition) {
+        companionEl.style.left = ''
+        companionEl.style.top = ''
+        companionEl.style.bottom = ''
+        companionEl.style.right = ''
+      }
       return
     }
     const compWidth = companionEl.offsetWidth || 60
@@ -281,6 +303,32 @@
     companionEl.style.top = `${Math.max(5, targetTop)}px`
     companionEl.style.bottom = 'auto'
     companionEl.style.right = 'auto'
+  }
+
+  // Moves the companion to follow a touch/mouse point on mobile, anchoring
+  // from whichever screen edge (left/right) is closest so it never runs
+  // off-screen, and flips the bubble to the opposite side of the orb.
+  function positionCompanionMobile(x, y) {
+    if (!companionEl) return
+    const orbEl = companionEl.querySelector('.comp-orb')
+    const orbSize = (orbEl && orbEl.offsetWidth) || 56
+    const margin = 8
+    const isRightSide = x > window.innerWidth / 2
+
+    hasCustomMobilePosition = true
+    companionEl.style.transform = 'none'
+    companionEl.style.top = `${Math.max(margin, Math.min(y - orbSize / 2, window.innerHeight - orbSize - margin))}px`
+    companionEl.style.bottom = 'auto'
+
+    if (isRightSide) {
+      companionEl.style.right = `${Math.max(margin, window.innerWidth - x - orbSize / 2)}px`
+      companionEl.style.left = 'auto'
+    } else {
+      companionEl.style.left = `${Math.max(margin, x - orbSize / 2)}px`
+      companionEl.style.right = 'auto'
+    }
+
+    companionEl.classList.toggle('side-right', isRightSide)
   }
 
   function enableJudisCompanion() {
@@ -428,7 +476,7 @@
     recognition = new SpeechRecognition()
     recognition.continuous = false
     recognition.interimResults = false
-    recognition.lang = 'es-ES'
+    recognition.lang = 'es-419'
 
     recognition.onresult = (event) => {
       receivedSpeechResult = true
@@ -534,7 +582,7 @@
           console.warn('SpeechRecognition stop failed', e)
           simulateTranscriptionResponse()
         }
-      }, isMobile ? 1000 : 0)
+      }, isMobile ? 1000 : 400)
     } else {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.onstop = () => {
@@ -554,14 +602,14 @@
 
   function processSpokenCommand(transcript) {
     updateCompanionState('speaking')
-    const text = transcript.toLowerCase()
+    const text = normalizeText(transcript)
 
-    if (text.includes('agendar') || text.includes('llamada') || text.includes('reunión') || text.includes('cita')) {
+    if (text.includes('agendar') || text.includes('llamada') || text.includes('reunion') || text.includes('cita')) {
       updateCompanionBubble('¡Entendido! Señalé el botón de <strong>"Agendar"</strong> en la pantalla. Haz clic allí para programar nuestra llamada. 📅')
       highlightScheduleButton()
-    } else if (text.includes('beneficio') || text.includes('para qué sirve') || text.includes('que es') || text.includes('qué es') || text.includes('que hace') || text.includes('qué hace') || text.includes('ventajas') || text.includes('sirve') || text.includes('función') || text.includes('funciones')) {
+    } else if (text.includes('beneficio') || text.includes('para que sirve') || text.includes('que es') || text.includes('que hace') || text.includes('ventajas') || text.includes('sirve') || text.includes('funcion') || text.includes('funciones')) {
       updateCompanionBubble('Soy un asistente que te ayuda a finalizar las acciones de usuarios en tu página, tipo guiarte en una compra o solucionar dudas complejas sin fricciones. 🚀')
-    } else if (text.includes('ayuda') || text.includes('objeto') || text.includes('producto') || text.includes('mostrar') || text.includes('buscar') || text.includes('guiar') || text.includes('iniciar') || text.includes('comenzar') || text.includes('detectar')) {
+    } else if (text.includes('ayud') || text.includes('objeto') || text.includes('producto') || text.includes('mostrar') || text.includes('buscar') || text.includes('guiar') || text.includes('iniciar') || text.includes('comenzar') || text.includes('detectar')) {
       updateCompanionBubble('¡Perfecto! Te guiaré secuencialmente para encontrar los 3 productos en la pantalla. 🚀')
       setTimeout(() => {
         if (!chrono2.running) {
@@ -875,13 +923,20 @@
     // Avatar Press and Hold Interaction (For Mobile and Touch Support)
     const compOrbEl = companionEl ? companionEl.querySelector('.comp-orb') : null
     let lastPressTime = 0
+    let isPressing = false
     if (compOrbEl) {
       // Prevent context menu on long press
       compOrbEl.addEventListener('contextmenu', (e) => e.preventDefault())
 
+      const getEventCoords = (e) => {
+        if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
+        return { x: e.clientX, y: e.clientY }
+      }
+
       const handlePressStart = (e) => {
         if (!isJudisEnabled) return
-        
+
         // Prevent back-to-back touch and mouse double-triggers within 300ms
         const now = Date.now()
         if (now - lastPressTime < 300) {
@@ -889,22 +944,81 @@
           return
         }
         lastPressTime = now
-        
+
         e.preventDefault()
         // If already listening (e.g., got stuck during native permission dialog blur), tap again to toggle stop
         if (companionState === 'listening') {
           stopAndProcessRecording()
           return
         }
-        if (companionState === 'idle' || companionState === 'speaking') {
-          startRecording()
+
+        const coords = getEventCoords(e)
+        dragStartX = coords.x
+        dragStartY = coords.y
+        dragMoveDetected = false
+        isDraggingCompanion = false
+        isPressing = true
+
+        const isMobile = window.innerWidth <= 600
+        if (!isMobile) {
+          if (companionState === 'idle' || companionState === 'speaking') {
+            startRecording()
+          }
+          return
+        }
+
+        // On mobile, wait briefly to see if this is a drag (move) before
+        // committing to a recording, so moving the orb doesn't start capture.
+        if (pressHoldTimer) clearTimeout(pressHoldTimer)
+        pressHoldTimer = setTimeout(() => {
+          pressHoldTimer = null
+          if (!dragMoveDetected && (companionState === 'idle' || companionState === 'speaking')) {
+            startRecording()
+          }
+        }, PRESS_HOLD_DELAY)
+      }
+
+      const handlePressMove = (e) => {
+        if (!isJudisEnabled) return
+        if (!isPressing) return
+        if (window.innerWidth > 600) return
+        if (isHotkeyActive) {
+          e.preventDefault() // keep blocking scroll while recording, but don't reposition
+          return
+        }
+
+        const coords = getEventCoords(e)
+        const dx = coords.x - dragStartX
+        const dy = coords.y - dragStartY
+
+        if (!dragMoveDetected && Math.hypot(dx, dy) > DRAG_MOVE_THRESHOLD) {
+          dragMoveDetected = true
+          isDraggingCompanion = true
+          if (pressHoldTimer) {
+            clearTimeout(pressHoldTimer)
+            pressHoldTimer = null
+          }
+        }
+
+        if (isDraggingCompanion) {
+          e.preventDefault()
+          positionCompanionMobile(coords.x, coords.y)
         }
       }
 
       const handlePressEnd = (e) => {
         if (!isJudisEnabled) return
+        isPressing = false
         if (e.target === compOrbEl) {
           e.preventDefault()
+        }
+        if (pressHoldTimer) {
+          clearTimeout(pressHoldTimer)
+          pressHoldTimer = null
+        }
+        if (isDraggingCompanion) {
+          isDraggingCompanion = false
+          return
         }
         if (isHotkeyActive) {
           stopAndProcessRecording()
@@ -913,9 +1027,10 @@
 
       compOrbEl.addEventListener('mousedown', handlePressStart)
       compOrbEl.addEventListener('touchstart', handlePressStart, { passive: false })
-      compOrbEl.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false })
+      compOrbEl.addEventListener('touchmove', handlePressMove, { passive: false })
 
       // Global window listeners for robust release, blur (permission prompt interrupts) and cancel events
+      window.addEventListener('mousemove', handlePressMove)
       window.addEventListener('mouseup', handlePressEnd)
       window.addEventListener('touchend', handlePressEnd)
       window.addEventListener('touchcancel', handlePressEnd)

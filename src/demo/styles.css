@@ -281,21 +281,30 @@ body{
   .product-card{padding:6px 2px !important}
   .p-name{font-size:9px !important}
   .p-emoji{font-size:20px !important}
-  /* Lock companion positioning on mobile (below topbar on the right) */
+  /* Default companion position on mobile — draggable, so top/left/transform
+     are left overridable (no !important) for JS to reposition it via touch. */
   .companion.following{
     position:fixed !important;
-    top:35% !important;
-    left:12px !important;
+    top:35%;
+    left:12px;
     bottom:auto !important;
-    right:auto !important;
-    transform:translateY(-50%) !important;
+    right:auto;
+    transform:translateY(-50%);
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
     gap: 8px !important;
   }
+  /* When dragged past the horizontal midpoint, flip the bubble to the
+     opposite side of the orb so it never renders off-screen. */
+  .companion.following.side-right{
+    flex-direction: row-reverse !important;
+  }
   .comp-orb {
-    cursor:pointer !important;
+    cursor:grab !important;
+  }
+  .comp-orb:active {
+    cursor:grabbing !important;
   }
   .product-card.has-image {
     height: 56px !important;
