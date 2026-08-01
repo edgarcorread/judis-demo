@@ -850,14 +850,29 @@
       })
     }
 
-    // Avatar Press and Hold Interaction (For Mobile and Touch Support)
+    // Avatar Press and Hold / Drag Interaction (For Mobile and Touch Support)
     const compOrbEl = companionEl ? companionEl.querySelector('.comp-orb') : null
+    let touchStartX = 0
+    let touchStartY = 0
+    let compStartX = 0
+    let compStartY = 0
+
     if (compOrbEl) {
       // Prevent context menu on long press
       compOrbEl.addEventListener('contextmenu', (e) => e.preventDefault())
 
       const handlePressStart = (e) => {
         if (!isJudisEnabled) return
+        
+        if (e.type === 'touchstart') {
+          const touch = e.touches[0]
+          touchStartX = touch.clientX
+          touchStartY = touch.clientY
+          const rect = companionEl.getBoundingClientRect()
+          compStartX = rect.left
+          compStartY = rect.top
+        }
+        
         e.preventDefault()
         // If already listening (e.g., got stuck during native permission dialog blur), tap again to toggle stop
         if (companionState === 'listening') {
@@ -867,6 +882,29 @@
         if (companionState === 'idle' || companionState === 'speaking') {
           startRecording()
         }
+      }
+
+      const handleTouchMove = (e) => {
+        if (!isJudisEnabled || !e.touches.length) return
+        
+        const touch = e.touches[0]
+        const deltaX = touch.clientX - touchStartX
+        const deltaY = touch.clientY - touchStartY
+        
+        let newLeft = compStartX + deltaX
+        let newTop = compStartY + deltaY
+        
+        // Bounds checking
+        const compWidth = companionEl.offsetWidth || 60
+        const compHeight = companionEl.offsetHeight || 60
+        newLeft = Math.max(5, Math.min(newLeft, window.innerWidth - compWidth - 5))
+        newTop = Math.max(5, Math.min(newTop, window.innerHeight - compHeight - 5))
+        
+        companionEl.style.left = `${newLeft}px`
+        companionEl.style.top = `${newTop}px`
+        companionEl.style.right = 'auto'
+        companionEl.style.bottom = 'auto'
+        companionEl.style.transform = 'none'
       }
 
       const handlePressEnd = (e) => {
@@ -881,6 +919,7 @@
 
       compOrbEl.addEventListener('mousedown', handlePressStart)
       compOrbEl.addEventListener('touchstart', handlePressStart, { passive: false })
+      compOrbEl.addEventListener('touchmove', handleTouchMove, { passive: false })
 
       // Global window listeners for robust release, blur (permission prompt interrupts) and cancel events
       window.addEventListener('mouseup', handlePressEnd)
