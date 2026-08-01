@@ -69,9 +69,8 @@
   let dragMoveDetected = false
   let dragStartX = 0
   let dragStartY = 0
-  let pressHoldTimer = null
+  let recordingCancelledByDrag = false
   const DRAG_MOVE_THRESHOLD = 10
-  const PRESS_HOLD_DELAY = 150
 
   // Mouse tracking
   let mouseX = window.innerWidth - 100
@@ -487,6 +486,10 @@
 
     recognition.onerror = (event) => {
       console.warn('[J.U.D.I.S Speech] Error:', event.error)
+      if (recordingCancelledByDrag) {
+        recordingCancelledByDrag = false
+        return
+      }
       updateCompanionState('speaking')
       if (event.error === 'not-allowed') {
         updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.')
@@ -598,6 +601,29 @@
         setTimeout(simulateTranscriptionResponse, 1000)
       }
     }
+  }
+
+  // Silently discards an in-progress recording when a hold-to-talk touch
+  // turns out to be a drag, without surfacing the "no escuché nada" fallback.
+  function cancelRecordingForDrag() {
+    if (!isHotkeyActive) return
+    isHotkeyActive = false
+    recordingCancelledByDrag = true
+    if (thinkingTimeout) {
+      clearTimeout(thinkingTimeout)
+      thinkingTimeout = null
+    }
+    if (recognition) {
+      try { recognition.abort() } catch (e) {}
+    } else if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try { mediaRecorder.stop() } catch (e) {}
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop())
+        micStream = null
+      }
+      mediaRecorder = null
+    }
+    hideSpeechBubble()
   }
 
   function processSpokenCommand(transcript) {
@@ -959,33 +985,20 @@
         isDraggingCompanion = false
         isPressing = true
 
-        const isMobile = window.innerWidth <= 600
-        if (!isMobile) {
-          if (companionState === 'idle' || companionState === 'speaking') {
-            startRecording()
-          }
-          return
+        // Start recording immediately, synchronously within this gesture —
+        // some mobile browsers require mic-access APIs to be triggered
+        // directly from the input event, not after a setTimeout delay.
+        // A drag detected afterwards (handlePressMove) cancels it silently.
+        if (companionState === 'idle' || companionState === 'speaking') {
+          startRecording()
         }
-
-        // On mobile, wait briefly to see if this is a drag (move) before
-        // committing to a recording, so moving the orb doesn't start capture.
-        if (pressHoldTimer) clearTimeout(pressHoldTimer)
-        pressHoldTimer = setTimeout(() => {
-          pressHoldTimer = null
-          if (!dragMoveDetected && (companionState === 'idle' || companionState === 'speaking')) {
-            startRecording()
-          }
-        }, PRESS_HOLD_DELAY)
       }
 
       const handlePressMove = (e) => {
         if (!isJudisEnabled) return
         if (!isPressing) return
         if (window.innerWidth > 600) return
-        if (isHotkeyActive) {
-          e.preventDefault() // keep blocking scroll while recording, but don't reposition
-          return
-        }
+        e.preventDefault()
 
         const coords = getEventCoords(e)
         const dx = coords.x - dragStartX
@@ -994,14 +1007,12 @@
         if (!dragMoveDetected && Math.hypot(dx, dy) > DRAG_MOVE_THRESHOLD) {
           dragMoveDetected = true
           isDraggingCompanion = true
-          if (pressHoldTimer) {
-            clearTimeout(pressHoldTimer)
-            pressHoldTimer = null
+          if (isHotkeyActive) {
+            cancelRecordingForDrag()
           }
         }
 
         if (isDraggingCompanion) {
-          e.preventDefault()
           positionCompanionMobile(coords.x, coords.y)
         }
       }
@@ -1011,10 +1022,6 @@
         isPressing = false
         if (e.target === compOrbEl) {
           e.preventDefault()
-        }
-        if (pressHoldTimer) {
-          clearTimeout(pressHoldTimer)
-          pressHoldTimer = null
         }
         if (isDraggingCompanion) {
           isDraggingCompanion = false
