@@ -1,0 +1,28 @@
+src/companion/index.ts
+  s_581d5a24ab01c9::t_514a82949bfa89 151-175,187-188,228
+scripts/test_tts_format.js
+  s_581d5a24ab01c9::t_7eab6eed9f8fab 1-96
+src/mem/index.ts
+  s_581d5a24ab01c9::t_bacfa156768585 888-912,916-917,956
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "509fe49188de0495457207f8891594692027d04b",
+  "prompts": {},
+  "humans": {
+    "h_e1ebe571e5a8ff": {
+      "author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  },
+  "sessions": {
+    "s_581d5a24ab01c9": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "15e64d14-4546-492e-9f2e-8236e16ce2b4",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+src/mem/index.ts
+  s_b5588ac717b62b::t_c2f46221cd309a 578-613,623-625,629-630
+  s_b5588ac717b62b::t_da37d0ce051c5c 1005-1008,1011-1025
+  s_b5588ac717b62b::t_40705d73d5edad 614-622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "21b4688686a467bda0d2fc16bc21ca001cef469d",
+  "prompts": {},
+  "sessions": {
+    "s_b5588ac717b62b": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "51c3803b-c323-406e-84d5-33efd307126c",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Luz Deniz <luz.deniz@pedidosya.com>"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+src/companion/index.ts
+  s_15f359fd836c25::t_3a0106d7701b51 9,18-19,22-23,38-46,67-73,83,90,92-94,99-253,270-274,322-343,347-351,360-362,364-366,368-372,374-378,380-381,383-386,389-395,401-411
+src/main/index.ts
+  s_15f359fd836c25::t_c2224ada8d8cf2 4,9
+  s_15f359fd836c25::t_11c6ff00bdbf20 52-54
+src/main/windows.ts
+  s_15f359fd836c25::t_283cfdca045bc8 91-95,97-98,100-102,104-105,107,112-113
+  s_15f359fd836c25::t_36379131ae3998 55-58,63-66
+  s_15f359fd836c25::t_5d96aa19cf6d49 96,103
+  s_15f359fd836c25::t_5acb665ae7a599 90,99,106,108-111
+src/companion/styles.css
+  s_15f359fd836c25::t_71a702338c66c5 216-337,341-374,377,380,393,398,414
+tests/windows.test.ts
+  s_15f359fd836c25::t_2d4d9aab1513ca 1-8,32,39,41-43,48-55,57-65,68-69,71-78,80-87,89-99
+  s_15f359fd836c25::t_1309bc00be2090 9-14,16-18,21-30,44-47,56,66-67,70,79,88
+  s_15f359fd836c25::t_f06b9fb9e78fc9 15
+  s_15f359fd836c25::t_c91c7c17c600fe 31,33-38,40
+  s_15f359fd836c25::t_302ac9825028ce 19-20
+src/companion/index.html
+  s_15f359fd836c25::t_a75e155938bcd4 17-24,26-27,37-56
+  s_15f359fd836c25::t_8c068e04915446 57
+tests/companion.test.ts
+  s_15f359fd836c25::t_fed7d32c3a84b5 1-7,44,46,48-49,51-54,56,58-65,70-71,76-123
+  s_15f359fd836c25::t_e4f9cd689e9f1d 8-43,45,47,50,55,57,66-69,72-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "18d6268f22e5368ccb56e36dd53ab37b0c991819",
+  "prompts": {},
+  "humans": {
+    "h_e1ebe571e5a8ff": {
+      "author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  },
+  "sessions": {
+    "s_15f359fd836c25": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "1aa768b4-50c0-40d0-91d2-2f989521a734",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  }
+}

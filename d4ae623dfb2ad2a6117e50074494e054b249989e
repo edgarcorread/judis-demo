@@ -1,0 +1,38 @@
+conductor/index.md
+  s_829ff6a860564b::t_7022ff73c04c92 1-14
+conductor/product-guidelines.md
+  s_829ff6a860564b::t_3a66f7e6a6f63a 1-17
+conductor/tech-stack.md
+  s_829ff6a860564b::t_b508f32bb2b7ce 1-24
+conductor/workflow.md
+  s_829ff6a860564b::t_0f5cda7abeb3e9 271-277
+  s_829ff6a860564b::t_a46d2eac69af73 143
+  s_829ff6a860564b::t_a659b7c2d4ebd6 140-142
+  s_829ff6a860564b::t_6a4cc1b2ee830c 144-146,268-270
+  s_829ff6a860564b::t_5ca2688e2b6aa0 278-280
+  s_829ff6a860564b::t_e7045f0e6f9c97 1-139,147-267,281-335
+conductor/product.md
+  s_829ff6a860564b::t_c992604acca080 1-19
+conductor/code_styleguides/general.md
+  s_829ff6a860564b::t_c1e819424e1aeb 1-23
+conductor/code_styleguides/html-css.md
+  s_829ff6a860564b::t_1884acd85f3377 1-49
+conductor/code_styleguides/typescript.md
+  s_829ff6a860564b::t_dc0484e449b4cf 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d4ae623dfb2ad2a6117e50074494e054b249989e",
+  "prompts": {},
+  "sessions": {
+    "s_829ff6a860564b": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "cce4f885-d83a-47af-ae1a-fb2a3ca764aa",
+        "model": "gemini-3.5-flash"
+      },
+      "human_author": "Federico Ferreyra <federico.ferreyra@pedidosya.com>"
+    }
+  }
+}
