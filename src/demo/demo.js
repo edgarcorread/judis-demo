@@ -526,12 +526,15 @@
     }
 
     if (recognition) {
-      try {
-        recognition.stop()
-      } catch (e) {
-        console.warn('SpeechRecognition stop failed', e)
-        simulateTranscriptionResponse()
-      }
+      const isMobile = window.innerWidth <= 600
+      setTimeout(() => {
+        try {
+          recognition.stop()
+        } catch (e) {
+          console.warn('SpeechRecognition stop failed', e)
+          simulateTranscriptionResponse()
+        }
+      }, isMobile ? 450 : 0)
     } else {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.onstop = () => {
