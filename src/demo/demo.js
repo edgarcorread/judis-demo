@@ -497,7 +497,7 @@
         triggerSequentialGuide()
       }, 1500)
     } else {
-      updateCompanionBubble(`Te escuché decir: "<em>${transcript}</em>".<br/>Pídeme <strong>"ayuda"</strong>, pregúntame sobre los <strong>"beneficios de J.U.D.I.S"</strong> o di <strong>"cómo agendar"</strong>.`);
+      updateCompanionBubble(`Escuché que dijiste: "<em>${transcript}</em>". Pero para ayudarte, necesito que me pidas ayuda para encontrar los objetos. 😊`);
     }
   }
 
