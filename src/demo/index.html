@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>J.U.D.I.S — Demo Interactiva</title>
+    <meta name="description" content="Descubre cómo J.U.D.I.S mejora tu conversión guiando a los usuarios paso a paso." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+
+    <!-- ═══════════════════════════════════════════
+         SECCIÓN 1 — HERO + DESAFÍO
+    ═══════════════════════════════════════════ -->
+    <section id="sec-hero" class="section">
+      <div class="container">
+        <div class="fake-topbar">
+          <div class="fake-logo">
+            <img src="./logo.png" alt="J.U.D.I.S" style="height: 36px; display: block;" />
+          </div>
+          <nav class="fake-nav">
+            <span class="nav-btn nav-restart">Inicio</span>
+            <span class="nav-btn nav-schedule">Agendar</span>
+          </nav>
+        </div>
+
+        <div class="challenge-banner">
+          <div class="challenge-badge">DESAFÍO</div>
+          <h1 class="challenge-title">Imagina que eres un cliente en esta tienda</h1>
+          <p class="challenge-desc">
+            Para completar tu compra necesitas encontrar exactamente <strong>3 productos</strong> específicos.
+            Pulsa <strong>▶ Iniciar</strong> y encuéntralos lo más rápido posible.
+          </p>
+
+          <div class="targets-row">
+            <div class="target-badge" id="tb-0"><span class="target-emoji">🎧</span><span class="target-name">Audífonos Pro</span><span class="target-check">✓</span></div>
+            <div class="target-badge" id="tb-1"><span class="target-emoji">📷</span><span class="target-name">Cámara 4K</span><span class="target-check">✓</span></div>
+            <div class="target-badge" id="tb-2"><span class="target-emoji">🎮</span><span class="target-name">Gamepad Pro</span><span class="target-check">✓</span></div>
+          </div>
+
+          <div class="chrono-row">
+            <div class="chrono-display" id="chrono-1">00:00.0</div>
+            <button class="chrono-btn" id="btn-start-1">
+              <span>▶</span> Iniciar cronómetro
+            </button>
+          </div>
+          <div class="found-label"><span id="found-1">0</span>/3 encontrados</div>
+        </div>
+
+        <div class="store-grid" id="grid-1"></div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         SECCIÓN 2 — RESULTADO RONDA 1 + ACTIVAR J.U.D.I.S
+    ═══════════════════════════════════════════ -->
+    <section id="sec-result1" class="section hidden-sec">
+      <div class="container centered-col">
+        <div class="result-card">
+          <div class="result-emoji">⏱️</div>
+          <h2>¡Lo lograste!</h2>
+          <p class="result-sub">Sin ayuda tardaste</p>
+          <div class="result-time" id="time-1">—</div>
+        </div>
+
+        <div class="luzia-arrow">↓</div>
+        <p class="scroll-hint">Ahora probémoslo <strong>con J.U.D.I.S</strong> — sigue bajando</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         SECCIÓN 3 — ACTIVAR J.U.D.I.S (card estilo wallet)
+    ═══════════════════════════════════════════ -->
+    <section id="sec-activate" class="section hidden-sec">
+      <div class="container centered-col">
+
+        <!-- CARD IDÉNTICA A LA WALLET -->
+        <div class="wallet-card" id="wallet-card">
+          <div class="wallet-header">
+            <span class="wallet-star">✦</span>
+            <span class="wallet-brand">J.U.D.I.S</span>
+          </div>
+          <p class="wallet-question">¿Habilitar tu asistente de compras?</p>
+          <button class="wallet-btn" id="btn-enable-luzia">Sí, habilitar</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         SECCIÓN 4 — RONDA CON J.U.D.I.S
+    ═══════════════════════════════════════════ -->
+    <section id="sec-luzia" class="section hidden-sec">
+      <div class="container">
+
+        <div class="fake-topbar luzia-bar">
+          <div class="fake-logo">
+            <img src="./logo.png" alt="J.U.D.I.S" style="height: 36px; display: block;" />
+          </div>
+          <nav class="fake-nav">
+            <span class="nav-btn nav-restart">Inicio</span>
+            <span class="nav-btn nav-schedule">Agendar</span>
+          </nav>
+          <div class="luzia-pill-nav">
+            <span class="luzia-dot-on"></span>
+            <span>J.U.D.I.S activa</span>
+          </div>
+        </div>
+
+        <div class="challenge-banner mini-banner">
+          <div class="targets-row">
+            <div class="target-badge" id="tb2-0"><span class="target-emoji">🎧</span><span class="target-name">Audífonos Pro</span><span class="target-check">✓</span></div>
+            <div class="target-badge" id="tb2-1"><span class="target-emoji">📷</span><span class="target-name">Cámara 4K</span><span class="target-check">✓</span></div>
+            <div class="target-badge" id="tb2-2"><span class="target-emoji">🎮</span><span class="target-name">Gamepad Pro</span><span class="target-check">✓</span></div>
+          </div>
+          <div class="chrono-row">
+            <div class="chrono-display luzia-chrono" id="chrono-2">00:00.0</div>
+            <button class="chrono-btn luzia-btn" id="btn-start-2">
+              <span>▶</span> Iniciar con J.U.D.I.S
+            </button>
+          </div>
+          <div class="found-label"><span id="found-2">0</span>/3 encontrados</div>
+        </div>
+
+        <div class="store-grid" id="grid-2"></div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         SECCIÓN 5 — RESULTADO FINAL
+    ═══════════════════════════════════════════ -->
+    <section id="sec-final" class="section hidden-sec">
+      <div class="container centered-col">
+        <div class="final-card">
+          <div class="confetti-bar"></div>
+          <div class="final-logo">
+            <span class="wallet-star big">✦</span>
+            <span class="wallet-brand big">J.U.D.I.S</span>
+          </div>
+          <h2 class="final-title">¡Increíble diferencia!</h2>
+          <div class="cmp-row">
+            <div class="cmp-block without">
+              <div class="cmp-label">Sin J.U.D.I.S</div>
+              <div class="cmp-time" id="cmp-t1">—</div>
+            </div>
+            <div class="cmp-arrow">→</div>
+            <div class="cmp-block with">
+              <div class="cmp-label">Con J.U.D.I.S</div>
+              <div class="cmp-time" id="cmp-t2">—</div>
+            </div>
+          </div>
+          <div class="impact-box">
+            <span class="impact-emoji">🚀</span>
+            <p class="impact-msg" id="impact-msg">Con J.U.D.I.S podrías mejorar la conversión de tus clientes un <strong id="impact-pct">0%</strong>.</p>
+          </div>
+          <button class="wallet-btn schedule-btn" id="btn-schedule-meeting">📅 Agendar Reunión</button>
+        </div>
+
+        <!-- J.U.D.I.S Features Section -->
+        <div class="judis-features-grid">
+          <div class="feature-card">
+            <span class="feat-icon">🎯</span>
+            <h3>Guías Paso a Paso</h3>
+            <p>J.U.D.I.S acompaña al usuario señalando elementos interactivos en pantalla para evitar frustraciones y abandonos.</p>
+          </div>
+          <div class="feature-card">
+            <span class="feat-icon">🌐</span>
+            <h3>100% en la Web</h3>
+            <p>Se integra de forma nativa en tu sitio web. Sin descargas, sin extensiones complejas para el cliente final.</p>
+          </div>
+          <div class="feature-card">
+            <span class="feat-icon">⚙️</span>
+            <h3>Totalmente Personalizable</h3>
+            <p>Personaliza el avatar, tono de voz, instrucciones, procesos de negocio y flujos que desees automatizar.</p>
+          </div>
+          <div class="feature-card">
+            <span class="feat-icon">📈</span>
+            <h3>Optimiza tu Conversión</h3>
+            <p>Reduce los puntos de fricción en flujos de pago, registros complicados o llenado de formularios extensos.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ═══════════════════════════════════════════
+         WIDGET COMPANION — sigue al mouse
+         (avatar Laura, orbe, burbuja)
+    ═══════════════════════════════════════════ -->
+    <div id="companion" class="companion off">
+      <div class="comp-top">
+        <div class="comp-orb">
+          <img class="comp-avatar" src="./laura.png" alt="J.U.D.I.S" />
+          <div class="comp-dot"></div>
+        </div>
+        <div class="comp-pill"><span class="comp-pill-txt"></span></div>
+      </div>
+      <div class="comp-bubble hidden">
+        <div class="comp-bubble-head">
+          <span class="comp-lbl">J.U.D.I.S</span>
+          <span class="comp-hint"></span>
+        </div>
+        <div class="comp-answer"></div>
+      </div>
+    </div>
+
+    <script src="./demo.js"></script>
+  </body>
+</html>

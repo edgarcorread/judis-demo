@@ -1,3 +1,5 @@
+import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { VertexAI, HarmCategory, HarmBlockThreshold } from '@google-cloud/vertexai'
 import fs from 'fs'
 import path from 'path'
@@ -6,18 +8,6 @@ import path from 'path'
 const GCP_PROJECT = process.env.GCP_PROJECT ?? 'peya-data-ops-stg'
 const GCP_LOCATION = process.env.GCP_LOCATION ?? 'us-central1'
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-1.5-flash'
-
-// Si hay un archivo JSON de cuenta de servicio apuntado por GOOGLE_APPLICATION_CREDENTIALS,
-// el SDK lo toma automáticamente. Si no, usa ADC (Application Default Credentials).
-let vertexClient: VertexAI | null = null
-
-function getClient(): VertexAI {
-  if (!vertexClient) {
-    // El SDK de Vertex AI usa GOOGLE_APPLICATION_CREDENTIALS automáticamente
-    vertexClient = new VertexAI({ project: GCP_PROJECT, location: GCP_LOCATION })
-  }
-  return vertexClient
-}
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
 function loadSystemPrompt(): string {
@@ -47,7 +37,7 @@ Reglas de hotspots:
 - Fuera de modo guía usa siempre "guide": {"active": false, "done": false}.`
 }
 
-// ── Types (compatibles con los que usa ipc.ts) ────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 export interface Hotspot {
   x: number
   y: number
@@ -59,9 +49,8 @@ export interface GuideInfo {
   done: boolean
 }
 
-// Historial de chat en formato Gemini
 export interface ChatMessage {
-  role: 'user' | 'model'
+  role: 'user' | 'model' | 'assistant'
   parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }>
 }
 
@@ -138,7 +127,7 @@ function parseResponse(
   }
 }
 
-// ── Main: askClaude → ahora usa Gemini via Vertex AI ─────────────────────────
+// ── Main: askClaude ───────────────────────────────────────────────────────────
 export async function askClaude(params: AskParams): Promise<ClaudeResponse> {
   const { history, question, screenshotJpeg, imgWidth, imgHeight, extraSystem } = params
 
@@ -156,39 +145,136 @@ export async function askClaude(params: AskParams): Promise<ClaudeResponse> {
     ]
   }
 
-  const generativeModel = getClient().getGenerativeModel({
-    model: GEMINI_MODEL,
-    systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
-    generationConfig: {
-      maxOutputTokens: 512,
-      temperature: 0.2,
-      responseMimeType: 'application/json'
-    },
-    safetySettings: [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE }
+  let raw = ''
+  let tokensIn = 0
+  let tokensOut = 0
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY
+  const openaiKey = process.env.OPENAI_API_KEY
+
+  let success = false
+
+  if (anthropicKey && anthropicKey.startsWith('sk-ant-')) {
+    try {
+      console.log('[capaz] Intentando API de Anthropic Claude')
+      const anthropic = new Anthropic({ apiKey: anthropicKey })
+      const prunedHistory = pruneImages(history)
+
+      const messages: Anthropic.MessageParam[] = []
+      for (const m of prunedHistory) {
+        const role = m.role === 'user' ? 'user' : 'assistant'
+        const textContent = m.parts.map((p) => p.text ?? '').join('\n').trim()
+        if (textContent) {
+          messages.push({ role, content: textContent })
+        }
+      }
+
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: imageBase64
+            }
+          },
+          { type: 'text', text: question }
+        ]
+      })
+
+      const response = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20240620',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages
+      })
+
+      raw = response.content.map((c) => (c.type === 'text' ? c.text : '')).join('')
+      tokensIn = response.usage.input_tokens
+      tokensOut = response.usage.output_tokens
+      success = true
+    } catch (err: any) {
+      console.warn('[capaz] Anthropic API falló, usando fallback de OpenAI:', err?.message || err)
+    }
+  }
+
+  if (!success && openaiKey) {
+    console.log('[capaz] Usando API de OpenAI GPT-4o-mini')
+    const openai = new OpenAI({ apiKey: openaiKey })
+    const prunedHistory = pruneImages(history)
+
+    const messages: OpenAI.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt }
     ]
-  })
 
-  const prunedHistory = pruneImages(history)
+    for (const m of prunedHistory) {
+      const role = m.role === 'user' ? 'user' : 'assistant'
+      const textContent = m.parts.map((p) => p.text ?? '').join('\n').trim()
+      if (textContent) {
+        messages.push({ role, content: textContent })
+      }
+    }
 
-  const chat = generativeModel.startChat({
-    history: prunedHistory.map((m) => ({
-      role: m.role,
-      parts: m.parts.map((p) => (p.inlineData ? p : { text: p.text ?? '' }))
-    }))
-  })
+    messages.push({
+      role: 'user',
+      content: [
+        {
+          type: 'image_url',
+          image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
+        },
+        { type: 'text', text: question }
+      ]
+    })
 
-  const result = await chat.sendMessage(
-    userMessage.parts.map((p) => (p.inlineData ? p : { text: p.text ?? '' }))
-  )
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages
+    })
 
-  const response = result.response
-  const raw = response.candidates?.[0]?.content?.parts?.[0]?.text ?? '(sin respuesta)'
-  const tokensIn = response.usageMetadata?.promptTokenCount ?? 0
-  const tokensOut = response.usageMetadata?.candidatesTokenCount ?? 0
+    raw = response.choices[0]?.message?.content ?? '(sin respuesta)'
+    tokensIn = response.usage?.prompt_tokens ?? 0
+    tokensOut = response.usage?.completion_tokens ?? 0
+    success = true
+  }
+
+  if (!success) {
+    console.log('[capaz] Usando VertexAI Google Gemini (fallback)')
+    let vertexClient = new VertexAI({ project: GCP_PROJECT, location: GCP_LOCATION })
+    const generativeModel = vertexClient.getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        maxOutputTokens: 512,
+        temperature: 0.2,
+        responseMimeType: 'application/json'
+      },
+      safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE }
+      ]
+    })
+
+    const prunedHistory = pruneImages(history)
+    const chat = generativeModel.startChat({
+      history: prunedHistory.map((m) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: m.parts.map((p) => (p.inlineData ? p : { text: p.text ?? '' }))
+      }))
+    })
+
+    const result = await chat.sendMessage(
+      userMessage.parts.map((p) => (p.inlineData ? p : { text: p.text ?? '' }))
+    )
+
+    raw = result.response.candidates?.[0]?.content?.parts?.[0]?.text ?? '(sin respuesta)'
+    tokensIn = result.response.usageMetadata?.promptTokenCount ?? 0
+    tokensOut = result.response.usageMetadata?.candidatesTokenCount ?? 0
+  }
 
   const { answer, hotspots, guide } = parseResponse(raw, imgWidth, imgHeight)
 
@@ -202,7 +288,7 @@ export async function askClaude(params: AskParams): Promise<ClaudeResponse> {
   return { answer, hotspots, guide, tokensIn, tokensOut, userMessage, assistantMessage }
 }
 
-// ── convertDocumentToFlow con Gemini ─────────────────────────────────────────
+// ── convertDocumentToFlow ─────────────────────────────────────────────────────
 const FLOW_FORMAT = `# <Nombre corto del proceso>
 
 > <Descripción de una línea: cuándo aplica este proceso>
@@ -226,23 +312,51 @@ Reglas:
 - Si el documento tiene información que no es un paso (contexto, excepciones), va en Notas.
 - Sé fiel al documento: no inventes pasos que no estén descritos o claramente implícitos.`
 
-  const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> =
-    doc.kind === 'pdf' && doc.data
+  const textContent = doc.text ?? ''
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY
+  const openaiKey = process.env.OPENAI_API_KEY
+
+  let raw = ''
+
+  if (anthropicKey && anthropicKey.startsWith('sk-ant-')) {
+    const anthropic = new Anthropic({ apiKey: anthropicKey })
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 2048,
+      system: instruction,
+      messages: [{ role: 'user', content: textContent }]
+    })
+    raw = response.content.map((c) => (c.type === 'text' ? c.text : '')).join('')
+  } else if (openaiKey) {
+    const openai = new OpenAI({ apiKey: openaiKey })
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: instruction },
+        { role: 'user', content: textContent }
+      ]
+    })
+    raw = response.choices[0]?.message?.content ?? ''
+  } else {
+    let vertexClient = new VertexAI({ project: GCP_PROJECT, location: GCP_LOCATION })
+    const generativeModel = vertexClient.getGenerativeModel({
+      model: GEMINI_MODEL,
+      generationConfig: { maxOutputTokens: 2048, temperature: 0.1 }
+    })
+    const parts = doc.kind === 'pdf' && doc.data
       ? [
           { inlineData: { mimeType: 'application/pdf', data: doc.data.toString('base64') } },
           { text: instruction }
         ]
-      : [{ text: `${instruction}\n\n--- DOCUMENTO ---\n${doc.text ?? ''}` }]
+      : [{ text: `${instruction}\n\n--- DOCUMENTO ---\n${textContent}` }]
+    const result = await generativeModel.generateContent({ contents: [{ role: 'user', parts }] })
+    raw = result.response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+  }
 
-  const generativeModel = getClient().getGenerativeModel({
-    model: GEMINI_MODEL,
-    generationConfig: { maxOutputTokens: 2048, temperature: 0.1 }
-  })
-
-  const result = await generativeModel.generateContent({ contents: [{ role: 'user', parts }] })
-  const raw = result.response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
   if (!raw) throw new Error('No se pudo convertir el documento')
 
   const fence = raw.match(/```(?:markdown|md)?\s*([\s\S]*?)```/)
   return (fence ? fence[1].trim() : raw) + '\n'
 }
+

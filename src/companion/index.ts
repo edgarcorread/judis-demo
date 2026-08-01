@@ -66,7 +66,7 @@ function setWidgetState(state: string): void {
   }
   if (dismissTimer) { clearTimeout(dismissTimer); dismissTimer = null }
   if (state === 'speaking') {
-    dismissTimer = setTimeout(() => window.capaz.dismiss(), 8_000)
+    dismissTimer = setTimeout(() => window.capaz.dismiss(), 15_000)
   }
 }
 
@@ -161,7 +161,7 @@ window.capaz.onError((msg) => {
   stateClass = 'state-speaking'
   applyClasses()
   if (dismissTimer) clearTimeout(dismissTimer)
-  dismissTimer = setTimeout(() => setWidgetState('idle'), 8_000)
+  dismissTimer = setTimeout(() => setWidgetState('idle'), 20_000)
 })
 
 window.capaz.onFlip((flip) => {

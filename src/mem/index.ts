@@ -378,14 +378,74 @@ function clearHotspots(): void {
   hotspotsOverlay.innerHTML = ''
 }
 
+function findMatchingElement(label?: string): HTMLElement | null {
+  if (!label) return null
+  const clean = label.toLowerCase().trim()
+
+  if (clean.includes('proveedor')) {
+    const el = document.getElementById('menu-proveedores')
+    if (el && el.offsetParent !== null) return el
+  }
+  if (clean.includes('descuento')) {
+    const el = document.getElementById('menu-descuentos')
+    if (el && el.offsetParent !== null) return el
+  }
+  if (clean.includes('carnes premium') || clean.includes('carne')) {
+    const el = document.querySelector('.prov-card[data-prov-id="3"]') as HTMLElement | null
+    if (el && el.offsetParent !== null) return el
+  }
+  if (clean.includes('agregar')) {
+    const el = document.querySelector('.prov-add-btn') as HTMLElement | null
+    if (el && el.offsetParent !== null) return el
+  }
+  if (clean.includes('ver carrito') || clean.includes('carrito')) {
+    const el = document.getElementById('prov-go-to-cart') as HTMLElement | null
+    if (el && el.offsetParent !== null) return el
+  }
+  if (clean.includes('confirmar') || clean.includes('compra') || clean.includes('finalizar')) {
+    const el = document.getElementById('prov-confirm-purchase') as HTMLElement | null
+    if (el && el.offsetParent !== null) return el
+  }
+  if (clean.includes('inicio')) {
+    const el = document.getElementById('menu-inicio') as HTMLElement | null
+    if (el && el.offsetParent !== null) return el
+  }
+  if (clean.includes('pago de servicio') || clean.includes('servicio')) {
+    const el = document.getElementById('menu-pago-servicios') as HTMLElement | null
+    if (el && el.offsetParent !== null) return el
+  }
+
+  // Fallback: search interactive elements by text content
+  const candidates = Array.from(document.querySelectorAll('a, button, .nav-item, .prov-card'))
+  for (const candidate of candidates) {
+    const text = candidate.textContent?.toLowerCase() || ''
+    if (text.includes(clean) && (candidate as HTMLElement).offsetParent !== null) {
+      return candidate as HTMLElement
+    }
+  }
+
+  return null
+}
+
 function renderHotspots(spots: HotspotPayload[]): void {
   clearHotspots()
   for (const spot of spots) {
+    let posX = spot.x
+    let posY = spot.y
+
+    const matchedEl = findMatchingElement(spot.label)
+    if (matchedEl) {
+      const rect = matchedEl.getBoundingClientRect()
+      posX = Math.round(rect.left + rect.width / 2)
+      posY = Math.round(rect.top + rect.height / 2)
+      console.log(`[capaz] Hotspot auto-snapped to element "${spot.label}": (${posX}, ${posY})`)
+    }
+
     const el = document.createElement('div')
     el.className = 'hotspot'
     el.id = `hotspot-${spot.id}`
-    el.style.left = `${spot.x}px`
-    el.style.top = `${spot.y}px`
+    el.style.left = `${posX}px`
+    el.style.top = `${posY}px`
 
     const ring = document.createElement('div')
     ring.className = 'ring'
@@ -405,29 +465,20 @@ function renderHotspots(spots: HotspotPayload[]): void {
     el.addEventListener('click', (e) => {
       e.stopPropagation()
       
-      // Find element underneath the hotspot
-      el.style.pointerEvents = 'none'
-      const underEl = document.elementFromPoint(spot.x, spot.y) as HTMLElement | null
-      el.style.pointerEvents = 'auto'
+      // Trigger click on matched element or element under point
+      const targetEl = matchedEl || (() => {
+        el.style.pointerEvents = 'none'
+        const u = document.elementFromPoint(posX, posY) as HTMLElement | null
+        el.style.pointerEvents = 'auto'
+        return u
+      })()
       
-      if (underEl && typeof underEl.click === 'function') {
-        console.log(`[capaz] Hotspot clicked. Triggering click on: ${underEl.id || underEl.tagName}`)
-        underEl.click()
+      if (targetEl && typeof targetEl.click === 'function') {
+        console.log(`[capaz] Hotspot clicked. Triggering click on: ${targetEl.id || targetEl.className || targetEl.tagName}`)
+        targetEl.click()
       }
       
       handleHotspotHit(spot.id)
-      
-      if (spot.id === 10) {
-        setWidgetState('thinking')
-        setTimeout(() => {
-          setWidgetState('speaking')
-          answerText.textContent = '¡Excelente! Ahí puedes ver tu saldo disponible de $ 4.452,94. ¿Necesitas algo más?'
-          setTimeout(() => {
-            setWidgetState('idle')
-            clearHotspots()
-          }, 6000)
-        }, 1000)
-      }
       
       if (window.capaz && typeof window.capaz.clickHotspot === 'function') {
         window.capaz.clickHotspot(spot.id)
@@ -737,6 +788,8 @@ const navMap: { menuId: string; viewId: string }[] = [
   { menuId: 'menu-pago-servicios',  viewId: 'view-pago-servicios' },
   { menuId: 'menu-peya-pos',        viewId: 'view-peya-pos' },
   { menuId: 'menu-prestamos',       viewId: 'view-prestamos' },
+  { menuId: 'menu-proveedores',     viewId: 'view-proveedores' },
+  { menuId: 'menu-descuentos',      viewId: 'view-descuentos' },
   { menuId: 'menu-ayuda',           viewId: 'view-ayuda' },
 ]
 
@@ -756,6 +809,14 @@ function navigateTo(targetViewId: string): void {
       menuItem.classList.toggle('active', viewId === targetViewId)
     }
   })
+
+  // Reset proveedores view when navigating to it
+  if (targetViewId === 'view-proveedores') {
+    provCurrentStep = 1
+    provSelectedProvider = null
+    provCart = []
+    renderProveedoresView()
+  }
 }
 
 navMap.forEach(({ menuId, viewId }) => {
@@ -796,3 +857,605 @@ if (btnGoTarjetasVisa) {
 }
 
 
+// ── Proveedores Shopping Module ──────────────────────────────
+interface ProvProduct {
+  id: number
+  name: string
+  unit: string
+  price: number
+  emoji: string
+}
+
+interface ProvProvider {
+  id: number
+  name: string
+  category: string
+  icon: string
+  iconBg: string
+  rating: number
+  delivery: string
+  minOrder: string
+  products: ProvProduct[]
+}
+
+interface ProvCartItem {
+  product: ProvProduct
+  providerId: number
+  qty: number
+}
+
+// Mock Data
+const PROVIDERS: ProvProvider[] = [
+  {
+    id: 1, name: 'Distribuidora Sur', category: 'Alimentos secos', icon: '🏪',
+    iconBg: '#fef3c7', rating: 4.8, delivery: '24hs', minOrder: '$15.000',
+    products: [
+      { id: 101, name: 'Harina 000 x 25kg', unit: 'Bolsa', price: 8500, emoji: '🌾' },
+      { id: 102, name: 'Aceite girasol x 5L', unit: 'Bidón', price: 6200, emoji: '🫒' },
+      { id: 103, name: 'Sal fina x 10kg', unit: 'Bolsa', price: 2800, emoji: '🧂' },
+      { id: 104, name: 'Azúcar x 10kg', unit: 'Bolsa', price: 5100, emoji: '🍬' },
+      { id: 105, name: 'Fideos secos x 5kg', unit: 'Caja', price: 4300, emoji: '🍝' },
+      { id: 106, name: 'Arroz largo fino x 10kg', unit: 'Bolsa', price: 7600, emoji: '🍚' },
+    ]
+  },
+  {
+    id: 2, name: 'Lácteos Del Campo', category: 'Lácteos y frescos', icon: '🧀',
+    iconBg: '#dbeafe', rating: 4.6, delivery: '12hs', minOrder: '$10.000',
+    products: [
+      { id: 201, name: 'Queso cremoso x 5kg', unit: 'Horma', price: 18500, emoji: '🧀' },
+      { id: 202, name: 'Mozzarella rallada x 2.5kg', unit: 'Bolsa', price: 12800, emoji: '🧀' },
+      { id: 203, name: 'Crema de leche x 5L', unit: 'Sachet', price: 9400, emoji: '🥛' },
+      { id: 204, name: 'Manteca x 2kg', unit: 'Plancha', price: 6700, emoji: '🧈' },
+      { id: 205, name: 'Leche entera x 12L', unit: 'Pack', price: 8900, emoji: '🥛' },
+      { id: 206, name: 'Yogur natural x 5kg', unit: 'Balde', price: 5200, emoji: '🍶' },
+    ]
+  },
+  {
+    id: 3, name: 'Carnes Premium BA', category: 'Carnes y embutidos', icon: '🥩',
+    iconBg: '#fee2e2', rating: 4.9, delivery: '6hs', minOrder: '$20.000',
+    products: [
+      { id: 301, name: 'Vacío entero x 5kg', unit: 'Pieza', price: 32000, emoji: '🥩' },
+      { id: 302, name: 'Pechuga de pollo x 5kg', unit: 'Bolsa', price: 14500, emoji: '🍗' },
+      { id: 303, name: 'Carne picada especial x 5kg', unit: 'Bolsa', price: 19800, emoji: '🥩' },
+      { id: 304, name: 'Costilla de cerdo x 3kg', unit: 'Bandeja', price: 16200, emoji: '🍖' },
+      { id: 305, name: 'Chorizo parrillero x 5kg', unit: 'Bolsa', price: 11500, emoji: '🌭' },
+      { id: 306, name: 'Medallón de lomo x 2kg', unit: 'Bandeja', price: 22000, emoji: '🥩' },
+    ]
+  },
+  {
+    id: 4, name: 'Bebidas Express', category: 'Bebidas', icon: '🥤',
+    iconBg: '#dcfce7', rating: 4.5, delivery: '24hs', minOrder: '$8.000',
+    products: [
+      { id: 401, name: 'Coca-Cola 2.25L x 6', unit: 'Pack', price: 9600, emoji: '🥤' },
+      { id: 402, name: 'Agua mineral x 12', unit: 'Pack', price: 4800, emoji: '💧' },
+      { id: 403, name: 'Cerveza lager 1L x 12', unit: 'Cajón', price: 15600, emoji: '🍺' },
+      { id: 404, name: 'Jugo naranja 1L x 6', unit: 'Pack', price: 7200, emoji: '🍊' },
+      { id: 405, name: 'Soda sifón x 12', unit: 'Pack', price: 5400, emoji: '🫧' },
+      { id: 406, name: 'Vino tinto Malbec 750ml x 6', unit: 'Caja', price: 18000, emoji: '🍷' },
+    ]
+  },
+  {
+    id: 5, name: 'Limpieza Pro', category: 'Limpieza e higiene', icon: '🧹',
+    iconBg: '#e0e7ff', rating: 4.3, delivery: '48hs', minOrder: '$5.000',
+    products: [
+      { id: 501, name: 'Detergente 5L', unit: 'Bidón', price: 4200, emoji: '🧴' },
+      { id: 502, name: 'Lavandina 5L', unit: 'Bidón', price: 2800, emoji: '🧪' },
+      { id: 503, name: 'Desengrasante 5L', unit: 'Bidón', price: 5100, emoji: '✨' },
+      { id: 504, name: 'Rollo de cocina x 24', unit: 'Pack', price: 6800, emoji: '🧻' },
+      { id: 505, name: 'Bolsas residuos 80L x 100', unit: 'Rollo', price: 3500, emoji: '🗑️' },
+      { id: 506, name: 'Guantes látex M x 100', unit: 'Caja', price: 4900, emoji: '🧤' },
+    ]
+  },
+  {
+    id: 6, name: 'Packaging Total', category: 'Descartables y envases', icon: '📦',
+    iconBg: '#fef9c3', rating: 4.7, delivery: '24hs', minOrder: '$6.000',
+    products: [
+      { id: 601, name: 'Contenedor térmico 750ml x 100', unit: 'Pack', price: 8900, emoji: '📦' },
+      { id: 602, name: 'Bolsa papel kraft x 500', unit: 'Pack', price: 5600, emoji: '🛍️' },
+      { id: 603, name: 'Vaso descartable 300ml x 100', unit: 'Pack', price: 3200, emoji: '🥤' },
+      { id: 604, name: 'Film adherente 300m', unit: 'Rollo', price: 4100, emoji: '🎞️' },
+      { id: 605, name: 'Bandeja aluminio x 50', unit: 'Pack', price: 6300, emoji: '🍽️' },
+      { id: 606, name: 'Servilletas x 1000', unit: 'Pack', price: 2700, emoji: '🧻' },
+    ]
+  }
+]
+
+const STEP_LABELS = ['Proveedores', 'Productos', 'Carrito', 'Confirmar', 'Listo']
+const LUZIA_MESSAGES: Record<number, string> = {
+  1: '<strong>LuzIA:</strong> ¡Hola! 👋 Elegí un proveedor del catálogo para empezar tu pedido. Podés filtrar por categoría.',
+  2: '<strong>LuzIA:</strong> Bien, ahora seleccioná los productos que necesitás y la cantidad. Cuando termines, avanzá al carrito. 🛒',
+  3: '<strong>LuzIA:</strong> Revisá tu pedido. Podés modificar cantidades o eliminar productos antes de continuar. ✅',
+  4: '<strong>LuzIA:</strong> Todo listo para confirmar. Verificá los datos y el método de pago, luego hacé click en "Confirmar compra". 💳',
+  5: '<strong>LuzIA:</strong> ¡Compra realizada con éxito! 🎉 Tu pedido llegará en las próximas horas. ¡Seguí así!'
+}
+
+let provCurrentStep = 1
+let provSelectedProvider: ProvProvider | null = null
+let provCart: ProvCartItem[] = []
+
+const provStepperEl = document.getElementById('prov-stepper')!
+const provContentEl = document.getElementById('prov-dynamic-content')!
+const provNavBadge = document.getElementById('prov-nav-badge')!
+
+function formatPrice(amount: number): string {
+  return '$ ' + amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function getCartTotal(): number {
+  return provCart.reduce((sum, item) => sum + item.product.price * item.qty, 0)
+}
+
+function getCartCount(): number {
+  return provCart.reduce((sum, item) => sum + item.qty, 0)
+}
+
+function updateCartBadge(): void {
+  const count = getCartCount()
+  if (count > 0) {
+    provNavBadge.className = 'prov-cart-badge'
+    provNavBadge.textContent = String(count)
+  } else {
+    provNavBadge.className = ''
+    provNavBadge.textContent = ''
+  }
+}
+
+function renderStepper(): void {
+  provStepperEl.innerHTML = ''
+  for (let i = 0; i < STEP_LABELS.length; i++) {
+    const step = i + 1
+    const isDone = step < provCurrentStep
+    const isActive = step === provCurrentStep
+
+    const group = document.createElement('div')
+    group.className = 'prov-step-group'
+
+    const circle = document.createElement('div')
+    circle.className = 'prov-step-circle' + (isDone ? ' done' : isActive ? ' active' : '')
+    circle.textContent = isDone ? '✓' : String(step)
+
+    const label = document.createElement('div')
+    label.className = 'prov-step-label' + (isDone ? ' done' : isActive ? ' active' : '')
+    label.textContent = STEP_LABELS[i]
+
+    group.append(circle, label)
+    provStepperEl.appendChild(group)
+
+    if (i < STEP_LABELS.length - 1) {
+      const line = document.createElement('div')
+      line.className = 'prov-step-line' + (isDone ? ' done' : '')
+      line.style.marginBottom = '22px'
+      provStepperEl.appendChild(line)
+    }
+  }
+}
+
+function renderProveedoresView(): void {
+  renderStepper()
+  updateCartBadge()
+
+  switch (provCurrentStep) {
+    case 1: renderCatalog(); break
+    case 2: renderProducts(); break
+    case 3: renderCart(); break
+    case 4: renderCheckout(); break
+    case 5: renderSuccess(); break
+  }
+}
+
+// Step 1: Provider Catalog
+function renderCatalog(): void {
+  let html = '<div class="prov-catalog-grid">'
+  for (const prov of PROVIDERS) {
+    html += `
+      <div class="prov-card" data-prov-id="${prov.id}">
+        <div class="prov-card-icon" style="background: ${prov.iconBg}">${prov.icon}</div>
+        <div>
+          <div class="prov-card-name">${prov.name}</div>
+          <div class="prov-card-category">${prov.category}</div>
+        </div>
+        <div class="prov-card-meta">
+          <span class="prov-card-rating">★ ${prov.rating}</span>
+          <span class="prov-card-delivery">🚚 ${prov.delivery}</span>
+          <span>Min: ${prov.minOrder}</span>
+        </div>
+      </div>
+    `
+  }
+  html += '</div>'
+  provContentEl.innerHTML = html
+
+  // Bind clicks
+  provContentEl.querySelectorAll('.prov-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = Number(card.getAttribute('data-prov-id'))
+      provSelectedProvider = PROVIDERS.find(p => p.id === id) || null
+      if (provSelectedProvider) {
+        provCurrentStep = 2
+        renderProveedoresView()
+      }
+    })
+  })
+}
+
+// Step 2: Products
+function renderProducts(): void {
+  if (!provSelectedProvider) return
+
+  const prov = provSelectedProvider
+  let html = `
+    <div class="prov-products-header">
+      <div>
+        <div style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">
+          ${prov.icon} ${prov.name}
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);">${prov.category} • Entrega en ${prov.delivery}</div>
+      </div>
+      <button class="prov-back-btn" id="prov-back-to-catalog">← Volver a proveedores</button>
+    </div>
+    <div class="prov-products-grid">
+  `
+
+  for (const prod of prov.products) {
+    const inCart = provCart.find(c => c.product.id === prod.id)
+    const qty = inCart ? inCart.qty : 0
+
+    html += `
+      <div class="prov-product-card">
+        <div class="prov-product-emoji">${prod.emoji}</div>
+        <div class="prov-product-info">
+          <div class="prov-product-name">${prod.name}</div>
+          <div class="prov-product-unit">${prod.unit}</div>
+          <div class="prov-product-price">${formatPrice(prod.price)}</div>
+        </div>
+        <div class="prov-product-actions">
+          ${qty > 0 ? `
+            <button class="prov-qty-btn" data-action="dec" data-prod-id="${prod.id}">−</button>
+            <span class="prov-qty-value">${qty}</span>
+            <button class="prov-qty-btn" data-action="inc" data-prod-id="${prod.id}">+</button>
+          ` : `
+            <button class="prov-add-btn" data-prod-id="${prod.id}">Agregar</button>
+          `}
+        </div>
+      </div>
+    `
+  }
+
+  html += '</div>'
+
+  // Cart summary bar if items in cart
+  const cartCount = getCartCount()
+  if (cartCount > 0) {
+    html += `
+      <div class="prov-cart-total-bar" style="margin-top: 20px;">
+        <div>
+          <span class="prov-cart-total-label">${cartCount} producto${cartCount !== 1 ? 's' : ''} en el carrito</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <span class="prov-cart-total-value">${formatPrice(getCartTotal())}</span>
+          <button class="prov-btn-primary" id="prov-go-to-cart" style="flex: none; padding: 12px 24px;">Ver carrito →</button>
+        </div>
+      </div>
+    `
+  }
+
+  provContentEl.innerHTML = html
+
+  // Bind events
+  document.getElementById('prov-back-to-catalog')?.addEventListener('click', () => {
+    provCurrentStep = 1
+    renderProveedoresView()
+  })
+
+  document.getElementById('prov-go-to-cart')?.addEventListener('click', () => {
+    provCurrentStep = 3
+    renderProveedoresView()
+  })
+
+  provContentEl.querySelectorAll('.prov-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prodId = Number(btn.getAttribute('data-prod-id'))
+      addToCart(prodId)
+      renderProducts()
+      renderStepper()
+      updateCartBadge()
+    })
+  })
+
+  provContentEl.querySelectorAll('.prov-qty-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prodId = Number(btn.getAttribute('data-prod-id'))
+      const action = btn.getAttribute('data-action')
+      if (action === 'inc') changeQty(prodId, 1)
+      else changeQty(prodId, -1)
+      renderProducts()
+      renderStepper()
+      updateCartBadge()
+    })
+  })
+}
+
+function addToCart(prodId: number): void {
+  if (!provSelectedProvider) return
+  const product = provSelectedProvider.products.find(p => p.id === prodId)
+  if (!product) return
+
+  const existing = provCart.find(c => c.product.id === prodId)
+  if (existing) {
+    existing.qty++
+  } else {
+    provCart.push({ product, providerId: provSelectedProvider.id, qty: 1 })
+  }
+}
+
+function changeQty(prodId: number, delta: number): void {
+  const item = provCart.find(c => c.product.id === prodId)
+  if (!item) return
+  item.qty += delta
+  if (item.qty <= 0) {
+    provCart = provCart.filter(c => c.product.id !== prodId)
+  }
+}
+
+// Step 3: Cart
+function renderCart(): void {
+  if (provCart.length === 0) {
+    provContentEl.innerHTML = `
+      <div class="prov-empty-state">
+        <div class="prov-empty-icon">🛒</div>
+        <div class="prov-empty-text">Tu carrito está vacío</div>
+        <div class="prov-empty-sub">Agregá productos de algún proveedor para empezar</div>
+        <button class="prov-btn-secondary" id="prov-empty-back" style="margin-top: 20px;">← Volver al catálogo</button>
+      </div>
+    `
+    document.getElementById('prov-empty-back')?.addEventListener('click', () => {
+      provCurrentStep = 1
+      renderProveedoresView()
+    })
+    return
+  }
+
+  let html = '<div class="prov-cart-container">'
+
+  for (const item of provCart) {
+    const subtotal = item.product.price * item.qty
+    html += `
+      <div class="prov-cart-item">
+        <div class="prov-cart-item-info">
+          <span class="prov-cart-item-emoji">${item.product.emoji}</span>
+          <div>
+            <div class="prov-cart-item-name">${item.product.name}</div>
+            <div class="prov-cart-item-unit">${item.product.unit} • ${formatPrice(item.product.price)} c/u</div>
+          </div>
+        </div>
+        <div class="prov-product-actions">
+          <button class="prov-qty-btn" data-action="dec" data-prod-id="${item.product.id}">−</button>
+          <span class="prov-qty-value">${item.qty}</span>
+          <button class="prov-qty-btn" data-action="inc" data-prod-id="${item.product.id}">+</button>
+        </div>
+        <span class="prov-cart-item-subtotal">${formatPrice(subtotal)}</span>
+        <button class="prov-cart-remove" data-prod-id="${item.product.id}" title="Eliminar">✕</button>
+      </div>
+    `
+  }
+
+  html += '</div>'
+
+  html += `
+    <div class="prov-cart-total-bar">
+      <span class="prov-cart-total-label">Total del pedido</span>
+      <span class="prov-cart-total-value">${formatPrice(getCartTotal())}</span>
+    </div>
+    <div class="prov-cart-actions">
+      <button class="prov-btn-secondary" id="prov-cart-back">← Seguir comprando</button>
+      <button class="prov-btn-primary" id="prov-cart-checkout">Continuar al pago →</button>
+    </div>
+  `
+
+  provContentEl.innerHTML = html
+
+  // Bind events
+  document.getElementById('prov-cart-back')?.addEventListener('click', () => {
+    provCurrentStep = 2
+    renderProveedoresView()
+  })
+
+  document.getElementById('prov-cart-checkout')?.addEventListener('click', () => {
+    provCurrentStep = 4
+    renderProveedoresView()
+  })
+
+  provContentEl.querySelectorAll('.prov-qty-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prodId = Number(btn.getAttribute('data-prod-id'))
+      const action = btn.getAttribute('data-action')
+      if (action === 'inc') changeQty(prodId, 1)
+      else changeQty(prodId, -1)
+      renderCart()
+      renderStepper()
+      updateCartBadge()
+    })
+  })
+
+  provContentEl.querySelectorAll('.prov-cart-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prodId = Number(btn.getAttribute('data-prod-id'))
+      provCart = provCart.filter(c => c.product.id !== prodId)
+      renderCart()
+      renderStepper()
+      updateCartBadge()
+    })
+  })
+}
+
+// Step 4: Checkout
+function renderCheckout(): void {
+  const total = getCartTotal()
+  const envio = 2500
+  const grandTotal = total + envio
+
+  let itemsHtml = ''
+  for (const item of provCart) {
+    itemsHtml += `
+      <div class="prov-checkout-row">
+        <span class="prov-checkout-row-label">${item.product.emoji} ${item.product.name} x${item.qty}</span>
+        <span class="prov-checkout-row-value">${formatPrice(item.product.price * item.qty)}</span>
+      </div>
+    `
+  }
+
+  const providerName = provSelectedProvider ? provSelectedProvider.name : 'Proveedor'
+
+  provContentEl.innerHTML = `
+    <div class="prov-checkout-grid">
+      <div>
+        <div class="prov-checkout-section">
+          <h3 class="prov-checkout-title">📋 Resumen del pedido</h3>
+          ${itemsHtml}
+          <div class="prov-checkout-row" style="border-bottom: none;">
+            <span class="prov-checkout-row-label">🚚 Envío</span>
+            <span class="prov-checkout-row-value">${formatPrice(envio)}</span>
+          </div>
+          <div class="prov-checkout-total-row">
+            <span class="prov-checkout-total-label">Total a pagar</span>
+            <span class="prov-checkout-total-value">${formatPrice(grandTotal)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="prov-checkout-section">
+          <h3 class="prov-checkout-title">📍 Datos de entrega</h3>
+          <div class="prov-checkout-row">
+            <span class="prov-checkout-row-label">Proveedor</span>
+            <span class="prov-checkout-row-value">${providerName}</span>
+          </div>
+          <div class="prov-checkout-row">
+            <span class="prov-checkout-row-label">Dirección</span>
+            <span class="prov-checkout-row-value">Av. Corrientes 1234</span>
+          </div>
+          <div class="prov-checkout-row">
+            <span class="prov-checkout-row-label">Entrega estimada</span>
+            <span class="prov-checkout-row-value">${provSelectedProvider?.delivery || '24hs'}</span>
+          </div>
+        </div>
+
+        <div class="prov-checkout-section" style="margin-top: 16px;">
+          <h3 class="prov-checkout-title">💳 Método de pago</h3>
+          <div class="prov-payment-option">
+            <div class="prov-payment-radio"><div class="prov-payment-radio-inner"></div></div>
+            <div class="prov-payment-info">
+              <div class="prov-payment-name">Saldo PeYa Wallet</div>
+              <div class="prov-payment-balance">Disponible: $ 4.452,94</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="prov-cart-actions" style="margin-top: 20px;">
+      <button class="prov-btn-secondary" id="prov-checkout-back">← Volver al carrito</button>
+      <button class="prov-btn-primary" id="prov-confirm-purchase">Confirmar compra</button>
+    </div>
+  `
+
+  document.getElementById('prov-checkout-back')?.addEventListener('click', () => {
+    provCurrentStep = 3
+    renderProveedoresView()
+  })
+
+  document.getElementById('prov-confirm-purchase')?.addEventListener('click', () => {
+    // Simulate processing
+    const btn = document.getElementById('prov-confirm-purchase') as HTMLButtonElement
+    btn.disabled = true
+    btn.textContent = 'Procesando...'
+
+    setTimeout(() => {
+      // Deduct from balance display
+      if (mainBalanceValue) {
+        const total = getCartTotal() + 2500
+        const currentBalance = 4452.94
+        const newBalance = currentBalance - total
+        mainBalanceValue.textContent = formatPrice(Math.max(0, newBalance))
+      }
+
+      provCurrentStep = 5
+      renderProveedoresView()
+      launchConfetti()
+    }, 2000)
+  })
+}
+
+// Step 5: Success
+function renderSuccess(): void {
+  const orderNum = 'PYW-' + String(Math.floor(100000 + Math.random() * 900000))
+  const total = getCartTotal() + 2500
+  const itemCount = getCartCount()
+  const provName = provSelectedProvider?.name || 'Proveedor'
+
+  provContentEl.innerHTML = `
+    <div class="prov-success-container">
+      <div class="prov-success-check">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <h2 class="prov-success-title">¡Compra realizada con éxito!</h2>
+      <p class="prov-success-subtitle">Tu pedido fue enviado a ${provName}.<br>Recibirás la entrega en las próximas ${provSelectedProvider?.delivery || '24hs'}.</p>
+
+      <div class="prov-success-order-card">
+        <div class="prov-success-order-number">PEDIDO ${orderNum}</div>
+        <div class="prov-success-detail-row">
+          <span class="prov-success-detail-label">Proveedor</span>
+          <span class="prov-success-detail-value">${provName}</span>
+        </div>
+        <div class="prov-success-detail-row">
+          <span class="prov-success-detail-label">Productos</span>
+          <span class="prov-success-detail-value">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="prov-success-detail-row">
+          <span class="prov-success-detail-label">Total pagado</span>
+          <span class="prov-success-detail-value" style="color: var(--accent-color); font-weight: 800;">${formatPrice(total)}</span>
+        </div>
+        <div class="prov-success-detail-row">
+          <span class="prov-success-detail-label">Método de pago</span>
+          <span class="prov-success-detail-value">Saldo PeYa Wallet</span>
+        </div>
+        <div class="prov-success-detail-row">
+          <span class="prov-success-detail-label">Entrega estimada</span>
+          <span class="prov-success-detail-value">${provSelectedProvider?.delivery || '24hs'}</span>
+        </div>
+      </div>
+
+      <button class="prov-btn-primary" id="prov-back-to-home" style="max-width: 320px;">Volver al inicio</button>
+    </div>
+  `
+
+  document.getElementById('prov-back-to-home')?.addEventListener('click', () => {
+    provCurrentStep = 1
+    provSelectedProvider = null
+    provCart = []
+    updateCartBadge()
+    navigateTo('view-inicio')
+  })
+}
+
+// Confetti effect
+function launchConfetti(): void {
+  const container = document.createElement('div')
+  container.className = 'prov-confetti-container'
+  document.body.appendChild(container)
+
+  const colors = ['#EA044E', '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899']
+
+  for (let i = 0; i < 50; i++) {
+    const piece = document.createElement('div')
+    piece.className = 'prov-confetti-piece'
+    piece.style.left = Math.random() * 100 + '%'
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)]
+    piece.style.animationDelay = Math.random() * 1.5 + 's'
+    piece.style.width = (4 + Math.random() * 8) + 'px'
+    piece.style.height = (4 + Math.random() * 8) + 'px'
+    container.appendChild(piece)
+  }
+
+  setTimeout(() => container.remove(), 4000)
+}

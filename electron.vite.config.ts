@@ -27,7 +27,8 @@ export default defineConfig({
           companion: resolve(__dirname, 'src/companion/index.html'),
           overlay: resolve(__dirname, 'src/overlay/index.html'),
           island: resolve(__dirname, 'src/island/index.html'),
-          mem: resolve(__dirname, 'src/mem/index.html')
+          mem: resolve(__dirname, 'src/mem/index.html'),
+          demo: resolve(__dirname, 'src/demo/index.html')
         }
       }
     }

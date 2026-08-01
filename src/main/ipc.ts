@@ -381,7 +381,7 @@ export function handleGlobalClick(): void {
     // Si era el último, la respuesta ya cumplió su propósito: despedirse solo
     setTimeout(() => {
       if (appState === 'speaking') setState('idle')
-    }, 3_000)
+    }, 12_000)
   }
 }
 

@@ -5,6 +5,8 @@
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
+    "demo": "vite serve src/demo --port 5174 --open",
+    "web": "vite --config electron.vite.config.ts",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "rebuild": "electron-rebuild -f -w uiohook-napi"
