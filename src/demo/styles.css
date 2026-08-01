@@ -290,7 +290,7 @@ body{
     right:auto !important;
     transform:translateY(-50%) !important;
     display: flex !important;
-    flex-direction: row-reverse !important;
+    flex-direction: row !important;
     align-items: center !important;
     gap: 8px !important;
   }

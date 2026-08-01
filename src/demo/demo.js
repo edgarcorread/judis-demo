@@ -443,7 +443,7 @@
       if (event.error === 'not-allowed') {
         updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.')
       } else {
-        updateCompanionBubble('Disculpa, no logré escucharte bien. ¿Podrías volver a intentarlo?')
+        updateCompanionBubble('No detecté la palabra ayuda, dila y te ayudo')
       }
     }
 
@@ -453,7 +453,7 @@
         if (companionState === 'listening' || companionState === 'thinking') {
           if (!receivedSpeechResult) {
             updateCompanionState('speaking')
-            updateCompanionBubble('No detecté ninguna palabra. Mantén presionado mientras hablas y suelta al terminar. 🎙️')
+            updateCompanionBubble('No detecté la palabra ayuda, dila y te ayudo')
           }
         }
       }, 1000)
@@ -571,7 +571,11 @@
         triggerSequentialGuide()
       }, 1500)
     } else {
-      updateCompanionBubble(`Escuché que dijiste: "<em>${transcript}</em>". Pero para ayudarte, necesito que me pidas ayuda para encontrar los objetos. 😊`);
+      const isMobile = window.innerWidth <= 600
+      const msg = isMobile 
+        ? 'No detecté la palabra ayuda, dila y te ayudo' 
+        : `Escuché que dijiste: "<em>${transcript}</em>". Pero para ayudarte, necesito que me pidas ayuda para encontrar los objetos. 😊`;
+      updateCompanionBubble(msg);
     }
   }
 
