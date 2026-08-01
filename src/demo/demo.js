@@ -471,20 +471,25 @@
   let receivedSpeechResult = false
   let recordingStartTime = 0
 
-  if (SpeechRecognition) {
-    recognition = new SpeechRecognition()
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = 'es-419'
+  // Builds a fresh recognizer for every recording. Reusing one long-lived
+  // instance across presses is flaky on real mobile browsers — a second
+  // .start() shortly after the previous session ended can silently fail to
+  // actually listen (the native recognizer session doesn't fully tear
+  // down), so subsequent attempts just time out with no result.
+  function createRecognition() {
+    const rec = new SpeechRecognition()
+    rec.continuous = false
+    rec.interimResults = false
+    rec.lang = 'es-419'
 
-    recognition.onresult = (event) => {
+    rec.onresult = (event) => {
       receivedSpeechResult = true
       const transcript = event.results[0][0].transcript
       console.log('[J.U.D.I.S Speech] Result:', transcript)
       processSpokenCommand(transcript)
     }
 
-    recognition.onerror = (event) => {
+    rec.onerror = (event) => {
       console.warn('[J.U.D.I.S Speech] Error:', event.error)
       if (recordingCancelledByDrag) {
         recordingCancelledByDrag = false
@@ -498,7 +503,7 @@
       }
     }
 
-    recognition.onend = () => {
+    rec.onend = () => {
       // If we stopped but didn't receive any speech transcription
       setTimeout(() => {
         if (companionState === 'listening' || companionState === 'thinking') {
@@ -509,6 +514,8 @@
         }
       }, 1800)
     }
+
+    return rec
   }
 
   async function startRecording() {
@@ -528,7 +535,8 @@
 
     updateCompanionBubble('Escuchando...')
 
-    if (recognition) {
+    if (SpeechRecognition) {
+      recognition = createRecognition()
       try {
         recognition.start()
       } catch (e) {
