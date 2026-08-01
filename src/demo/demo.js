@@ -254,6 +254,13 @@
 
   function updateCompanionPosition(x, y) {
     if (!companionEl) return
+    if (window.innerWidth <= 600) {
+      companionEl.style.left = ''
+      companionEl.style.top = ''
+      companionEl.style.bottom = ''
+      companionEl.style.right = ''
+      return
+    }
     const compWidth = companionEl.offsetWidth || 60
     const compHeight = companionEl.offsetHeight || 60
     const viewWidth = window.innerWidth
