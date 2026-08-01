@@ -86,6 +86,63 @@
   let keysPressed = {}
 
   /* ─────────────────────────────────────────────────
+     SUPABASE ANALYTICS TRACKING
+  ───────────────────────────────────────────────── */
+  const SUPABASE_URL = 'YOUR_SUPABASE_URL'
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'
+
+  let sessionId = sessionStorage.getItem('judis_session_id')
+  if (!sessionId) {
+    sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36)
+    sessionStorage.setItem('judis_session_id', sessionId)
+  }
+
+  let sessionQuestions = []
+  let sessionSeconds = 0
+
+  async function saveAnalytics(data) {
+    if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+      return
+    }
+    const url = `${SUPABASE_URL}/rest/v1/judis_analytics?on_conflict=session_id`
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          last_active_at: new Date().toISOString(),
+          ...data
+        })
+      })
+    } catch (e) {
+      console.warn('[J.U.D.I.S Analytics] Failed to send log:', e)
+    }
+  }
+
+  // Initial session registration
+  const isMobileDevice = window.innerWidth <= 600 || /Mobi|Android|iPhone/i.test(navigator.userAgent)
+  saveAnalytics({
+    device_type: isMobileDevice ? 'mobile' : 'desktop',
+    user_agent: navigator.userAgent,
+    max_section: 1,
+    total_time_seconds: 0
+  })
+
+  // Time tracker ping interval (runs every 5 seconds)
+  setInterval(() => {
+    sessionSeconds += 5
+    saveAnalytics({
+      total_time_seconds: sessionSeconds
+    })
+  }, 5000)
+
+  /* ─────────────────────────────────────────────────
      TIME FORMAT UTILS
   ───────────────────────────────────────────────── */
   function fmtTime(ms) {
@@ -168,6 +225,10 @@
 
     if (found1.size === 3) {
       stopChrono(1)
+      saveAnalytics({
+        max_section: 2,
+        ronda1_time: Math.round(chrono1.ms / 1000)
+      })
       setTimeout(() => {
         document.getElementById('time-1').textContent = fmtSecs(chrono1.ms)
         const secResult1 = document.getElementById('sec-result1')
@@ -208,6 +269,10 @@
       setTimeout(() => triggerSequentialGuide(), 600)
     } else {
       stopChrono(2)
+      saveAnalytics({
+        max_section: 4,
+        ronda2_time: Math.round(chrono2.ms / 1000)
+      })
       updateCompanionState('speaking')
       updateCompanionBubble('¡Increíble! Has encontrado todos los productos con mi ayuda. 😊')
       setTimeout(() => {
@@ -739,6 +804,10 @@
   }
 
   function processSpokenCommand(transcript) {
+    sessionQuestions.push(transcript)
+    saveAnalytics({
+      questions: sessionQuestions
+    })
     updateCompanionState('speaking')
     const text = normalizeText(transcript)
     const heard = `<div class="comp-heard">🎧 Te escuché decir: "<em>${transcript}</em>"</div>`
@@ -951,6 +1020,10 @@
       if (walletCardEl) walletCardEl.classList.add('enabled')
       enableLuziaBtn.textContent = 'Habilitado'
       enableJudisCompanion()
+      saveAnalytics({
+        max_section: 3,
+        is_luzia_enabled: true
+      })
 
       // Inform user how to trigger J.U.D.I.S via bubble
       const welcomeMsg = window.innerWidth <= 600
