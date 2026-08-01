@@ -268,12 +268,12 @@ body{
   /* Lock companion positioning on mobile (below topbar on the right) */
   .companion.following{
     position:fixed !important;
-    top:50% !important;
-    right:12px !important;
+    top:35% !important;
+    left:12px !important;
     bottom:auto !important;
-    left:auto !important;
+    right:auto !important;
     transform:translateY(-50%) !important;
-    align-items:flex-end !important;
+    align-items:flex-start !important;
   }
   .comp-orb {
     cursor:pointer !important;
