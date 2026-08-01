@@ -867,12 +867,22 @@
 
     // Avatar Press and Hold Interaction (For Mobile and Touch Support)
     const compOrbEl = companionEl ? companionEl.querySelector('.comp-orb') : null
+    let lastPressTime = 0
     if (compOrbEl) {
       // Prevent context menu on long press
       compOrbEl.addEventListener('contextmenu', (e) => e.preventDefault())
 
       const handlePressStart = (e) => {
         if (!isJudisEnabled) return
+        
+        // Prevent back-to-back touch and mouse double-triggers within 300ms
+        const now = Date.now()
+        if (now - lastPressTime < 300) {
+          e.preventDefault()
+          return
+        }
+        lastPressTime = now
+        
         e.preventDefault()
         // If already listening (e.g., got stuck during native permission dialog blur), tap again to toggle stop
         if (companionState === 'listening') {
@@ -896,6 +906,7 @@
 
       compOrbEl.addEventListener('mousedown', handlePressStart)
       compOrbEl.addEventListener('touchstart', handlePressStart, { passive: false })
+      compOrbEl.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false })
 
       // Global window listeners for robust release, blur (permission prompt interrupts) and cancel events
       window.addEventListener('mouseup', handlePressEnd)
