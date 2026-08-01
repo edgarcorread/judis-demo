@@ -456,7 +456,7 @@
             updateCompanionBubble('No detecté la palabra ayuda, dila y te ayudo')
           }
         }
-      }, 1000)
+      }, 1800)
     }
   }
 
@@ -534,7 +534,7 @@
           console.warn('SpeechRecognition stop failed', e)
           simulateTranscriptionResponse()
         }
-      }, isMobile ? 300 : 0)
+      }, isMobile ? 1000 : 0)
     } else {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.onstop = () => {
@@ -702,7 +702,7 @@
 
       // Welcome J.U.D.I.S speech
       const welcomeMsg = window.innerWidth <= 600
-        ? '¡Hola! Soy J.U.D.I.S. <strong>Mantén presionada mi foto</strong> mientras hablas y <strong>suéltala</strong> al terminar para hablarme.'
+        ? '¡Hola! Soy J.U.D.I.S. Mantén presionada mi foto para hablarme.'
         : '¡Hola! Soy J.U.D.I.S. Mantén presionadas las teclas <strong>J + U</strong> en tu teclado para hablarme.'
       updateCompanionBubble(welcomeMsg)
       updateCompanionState('speaking')
