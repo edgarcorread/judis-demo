@@ -392,22 +392,60 @@
   /* ─────────────────────────────────────────────────
      AUDIO RECORDING SIMULATION (J + U Keys)
   ───────────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────────
+     AUDIO RECORDING AND REAL SPEECH RECOGNITION
+  ───────────────────────────────────────────────── */
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  let recognition = null
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'es-ES'
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      console.log('[J.U.D.I.S Speech] Result:', transcript)
+      processSpokenCommand(transcript)
+    }
+
+    recognition.onerror = (event) => {
+      console.warn('[J.U.D.I.S Speech] Error:', event.error)
+      updateCompanionState('speaking')
+      updateCompanionBubble('Disculpa, no logré escucharte bien. ¿Podrías repetirlo?')
+    }
+
+    recognition.onend = () => {
+      if (companionState === 'listening') {
+        updateCompanionState('thinking')
+      }
+    }
+  }
+
   async function startRecording() {
     if (isHotkeyActive) return
     isHotkeyActive = true
     updateCompanionState('listening')
-    updateCompanionBubble('')
+    updateCompanionBubble('Escuchando...')
 
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      const opts = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? { mimeType: 'audio/webm;codecs=opus' } : {}
-      mediaRecorder = new MediaRecorder(micStream, opts)
-      audioChunks = []
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data) }
-      mediaRecorder.start(100)
-    } catch (err) {
-      console.warn('Microphone access not allowed or unavailable. Simulating audio capture.', err)
+    if (recognition) {
+      try {
+        recognition.start()
+      } catch (e) {
+        console.warn('SpeechRecognition already started or error:', e)
+      }
+    } else {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        const opts = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? { mimeType: 'audio/webm;codecs=opus' } : {}
+        mediaRecorder = new MediaRecorder(micStream, opts)
+        audioChunks = []
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data) }
+        mediaRecorder.start(100)
+      } catch (err) {
+        console.warn('Microphone access not allowed or unavailable. Simulating audio capture.', err)
+      }
     }
   }
 
@@ -416,18 +454,50 @@
     isHotkeyActive = false
     updateCompanionState('thinking')
 
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.onstop = () => {
-        if (micStream) {
-          micStream.getTracks().forEach(t => t.stop())
-          micStream = null
-        }
-        mediaRecorder = null
+    if (recognition) {
+      try {
+        recognition.stop()
+      } catch (e) {
+        console.warn('SpeechRecognition stop failed', e)
         simulateTranscriptionResponse()
       }
-      mediaRecorder.stop()
     } else {
-      setTimeout(simulateTranscriptionResponse, 1000)
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.onstop = () => {
+          if (micStream) {
+            micStream.getTracks().forEach(t => t.stop())
+            micStream = null
+          }
+          mediaRecorder = null
+          simulateTranscriptionResponse()
+        }
+        mediaRecorder.stop()
+      } else {
+        setTimeout(simulateTranscriptionResponse, 1000)
+      }
+    }
+  }
+
+  function processSpokenCommand(transcript) {
+    updateCompanionState('speaking')
+    const text = transcript.toLowerCase()
+
+    if (text.includes('agendar') || text.includes('llamada') || text.includes('reunión') || text.includes('cita')) {
+      updateCompanionBubble('¡Entendido! Señalé el botón de <strong>"Agendar"</strong> en la pantalla. Haz clic allí para programar nuestra llamada. 📅')
+      highlightScheduleButton()
+    } else if (text.includes('beneficio') || text.includes('para qué sirve') || text.includes('que es') || text.includes('qué es') || text.includes('que hace') || text.includes('qué hace') || text.includes('ventajas') || text.includes('sirve') || text.includes('función') || text.includes('funciones')) {
+      updateCompanionBubble('Soy un asistente que te ayuda a finalizar las acciones de usuarios en tu página, tipo guiarte en una compra o solucionar dudas complejas sin fricciones. 🚀')
+    } else if (text.includes('ayuda') || text.includes('objeto') || text.includes('producto') || text.includes('mostrar') || text.includes('buscar') || text.includes('guiar') || text.includes('iniciar') || text.includes('comenzar') || text.includes('detectar')) {
+      updateCompanionBubble('¡Perfecto! Te guiaré secuencialmente para encontrar los 3 productos en la pantalla. 🚀')
+      setTimeout(() => {
+        if (!chrono2.running) {
+          startChrono(2)
+        }
+        guideStep = 0
+        triggerSequentialGuide()
+      }, 1500)
+    } else {
+      updateCompanionBubble(`Te escuché decir: "<em>${transcript}</em>".<br/>Pídeme <strong>"ayuda"</strong>, pregúntame sobre los <strong>"beneficios de J.U.D.I.S"</strong> o di <strong>"cómo agendar"</strong>.`);
     }
   }
 
@@ -443,6 +513,122 @@
       guideStep = 0
       triggerSequentialGuide()
     }, 1500)
+  }
+
+  function highlightScheduleButton() {
+    const secFinal = document.getElementById('sec-final')
+    const isFinalVisible = secFinal && !secFinal.classList.contains('hidden-sec')
+    
+    // Target button: either the final CTA or the header nav button
+    const targetBtn = isFinalVisible 
+      ? document.getElementById('btn-schedule-meeting') 
+      : (document.querySelector('#sec-luzia .nav-schedule') || document.querySelector('.nav-schedule'))
+    
+    if (!targetBtn) return
+
+    // Clear previous hotspots
+    document.querySelectorAll('.hotspot-ring, .hotspot-ring-2, .hotspot-label, .hotspot-arrow').forEach(el => el.remove())
+
+    targetBtn.style.position = 'relative'
+    
+    const ring = document.createElement('div')
+    ring.className = 'hotspot-ring'
+    targetBtn.appendChild(ring)
+
+    const label = document.createElement('div')
+    label.className = 'hotspot-label'
+    if (isFinalVisible) {
+      label.style.top = '-38px'
+    } else {
+      label.style.top = '40px'
+    }
+    label.textContent = '✦ Haz clic aquí para agendar'
+    targetBtn.appendChild(label)
+
+    const arrow = document.createElement('div')
+    arrow.className = 'hotspot-arrow'
+    if (isFinalVisible) {
+      arrow.style.top = '-16px'
+      arrow.style.transform = 'translateX(-50%)'
+    } else {
+      arrow.style.top = '18px'
+      arrow.style.transform = 'translateX(-50%) rotate(180deg)'
+    }
+    arrow.textContent = '👆'
+    targetBtn.appendChild(arrow)
+
+    // Scroll target button into view
+    targetBtn.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+    // Auto dismiss highlighting after 8 seconds
+    setTimeout(() => {
+      ring.remove()
+      label.remove()
+      arrow.remove()
+    }, 8000)
+  }
+
+  function toggleJudis() {
+    const pills = document.querySelectorAll('.luzia-pill-nav')
+    
+    if (isJudisEnabled) {
+      // DEACTIVATE
+      isJudisEnabled = false
+      disableJudisCompanion()
+
+      pills.forEach(pill => {
+        const dot = pill.querySelector('.luzia-dot-on') || pill.querySelector('.luzia-dot-off')
+        if (dot) dot.className = 'luzia-dot-off'
+        const txt = pill.querySelector('span:last-child')
+        if (txt) txt.textContent = 'J.U.D.I.S inactiva'
+      })
+
+      // Revert wallet card state
+      if (walletCardEl) walletCardEl.classList.remove('enabled')
+      if (enableLuziaBtn) enableLuziaBtn.textContent = 'Sí, habilitar'
+
+      // Hide hotspots
+      const gridEl = document.getElementById('grid-2')
+      if (gridEl) {
+        gridEl.querySelectorAll('.hotspot-ring, .hotspot-ring-2, .hotspot-label, .hotspot-arrow').forEach(el => el.remove())
+      }
+
+      // Stop chrono 2 if running
+      if (chrono2.interval) {
+        clearInterval(chrono2.interval)
+      }
+      chrono2 = { interval: null, ms: 0, running: false }
+      document.getElementById('chrono-2').textContent = '00:00.0'
+      document.getElementById('chrono-2').classList.remove('running')
+      
+      const c2Btn = document.getElementById('btn-start-2')
+      if (c2Btn) {
+        c2Btn.innerHTML = '<span>▶</span> Iniciar con J.U.D.I.S'
+        c2Btn.classList.remove('disabled')
+      }
+    } else {
+      // ACTIVATE
+      isJudisEnabled = true
+      enableJudisCompanion()
+
+      pills.forEach(pill => {
+        const dot = pill.querySelector('.luzia-dot-off') || pill.querySelector('.luzia-dot-on')
+        if (dot) dot.className = 'luzia-dot-on'
+        const txt = pill.querySelector('span:last-child')
+        if (txt) txt.textContent = 'J.U.D.I.S activa'
+      })
+
+      // Sync wallet card state
+      if (walletCardEl) walletCardEl.classList.add('enabled')
+      if (enableLuziaBtn) enableLuziaBtn.textContent = 'Habilitado'
+
+      // Welcome J.U.D.I.S speech
+      const welcomeMsg = window.innerWidth <= 600
+        ? '¡Hola! Soy J.U.D.I.S. <strong>Mantén presionada mi foto</strong> mientras hablas y <strong>suéltala</strong> al terminar para hablarme.'
+        : '¡Hola! Soy J.U.D.I.S. Mantén presionadas las teclas <strong>J + U</strong> en tu teclado para hablarme.'
+      updateCompanionBubble(welcomeMsg)
+      updateCompanionState('speaking')
+    }
   }
 
   // Keyboard Hotkey Listener: J (Key 74) & U (Key 85)
@@ -638,6 +824,14 @@
       compOrbEl.addEventListener('touchend', handlePressEnd, { passive: false })
       compOrbEl.addEventListener('touchcancel', handlePressEnd, { passive: false })
     }
+
+    // Active pill toggling trigger
+    document.querySelectorAll('.luzia-pill-nav').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault()
+        toggleJudis()
+      })
+    })
 
     console.log('[J.U.D.I.S Demo] initialized successfully.')
   }
