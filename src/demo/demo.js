@@ -472,7 +472,6 @@
   let recordingStartTime = 0
   let micPermissionGranted = false
   let lastRecognitionEndedAt = 0
-  let recognitionStartWatchdog = null
 
   // Builds a fresh recognizer for every recording. Reusing one long-lived
   // instance across presses is flaky on real mobile browsers — a second
@@ -487,18 +486,10 @@
 
     rec.onstart = () => {
       micPermissionGranted = true
-      if (recognitionStartWatchdog) {
-        clearTimeout(recognitionStartWatchdog)
-        recognitionStartWatchdog = null
-      }
     }
 
     rec.onresult = (event) => {
       receivedSpeechResult = true
-      if (recognitionStartWatchdog) {
-        clearTimeout(recognitionStartWatchdog)
-        recognitionStartWatchdog = null
-      }
       const transcript = event.results[0][0].transcript
       console.log('[J.U.D.I.S Speech] Result:', transcript)
       processSpokenCommand(transcript)
@@ -506,10 +497,6 @@
 
     rec.onerror = (event) => {
       console.warn('[J.U.D.I.S Speech] Error:', event.error)
-      if (recognitionStartWatchdog) {
-        clearTimeout(recognitionStartWatchdog)
-        recognitionStartWatchdog = null
-      }
       if (recordingCancelledByDrag) {
         recordingCancelledByDrag = false
         return
@@ -538,26 +525,6 @@
     return rec
   }
 
-  // Some mobile browsers leave a just-started recognizer completely silent
-  // (no onstart, no onerror) if it's restarted too soon after the previous
-  // session ended. This watchdog catches that stuck state and recovers
-  // instead of leaving the bubble frozen on "Escuchando..." forever.
-  function armRecognitionStartWatchdog() {
-    if (recognitionStartWatchdog) clearTimeout(recognitionStartWatchdog)
-    recognitionStartWatchdog = setTimeout(() => {
-      recognitionStartWatchdog = null
-      if (companionState === 'listening') {
-        console.warn('[J.U.D.I.S Speech] Watchdog: recognition never started, resetting.')
-        if (recognition) {
-          try { recognition.abort() } catch (e) {}
-        }
-        isHotkeyActive = false
-        updateCompanionState('speaking')
-        updateCompanionBubble('No pude activar el micrófono, intenta de nuevo 🎙️')
-      }
-    }, 1500)
-  }
-
   async function startRecording() {
     if (isHotkeyActive) return
     isHotkeyActive = true
@@ -580,7 +547,6 @@
         recognition = createRecognition()
         try {
           recognition.start()
-          armRecognitionStartWatchdog()
         } catch (e) {
           console.warn('SpeechRecognition failed to start:', e)
           isHotkeyActive = false
@@ -623,11 +589,6 @@
     if (!isHotkeyActive) return
     isHotkeyActive = false
     updateCompanionState('thinking')
-
-    if (recognitionStartWatchdog) {
-      clearTimeout(recognitionStartWatchdog)
-      recognitionStartWatchdog = null
-    }
 
     const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
@@ -685,10 +646,6 @@
     if (thinkingTimeout) {
       clearTimeout(thinkingTimeout)
       thinkingTimeout = null
-    }
-    if (recognitionStartWatchdog) {
-      clearTimeout(recognitionStartWatchdog)
-      recognitionStartWatchdog = null
     }
     if (recognition) {
       try { recognition.abort() } catch (e) {}
