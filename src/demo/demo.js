@@ -470,6 +470,9 @@
   let recognition = null
   let receivedSpeechResult = false
   let recordingStartTime = 0
+  let micPermissionGranted = false
+  let lastRecognitionEndedAt = 0
+  let recognitionStartWatchdog = null
 
   // Builds a fresh recognizer for every recording. Reusing one long-lived
   // instance across presses is flaky on real mobile browsers — a second
@@ -482,8 +485,20 @@
     rec.interimResults = false
     rec.lang = 'es-419'
 
+    rec.onstart = () => {
+      micPermissionGranted = true
+      if (recognitionStartWatchdog) {
+        clearTimeout(recognitionStartWatchdog)
+        recognitionStartWatchdog = null
+      }
+    }
+
     rec.onresult = (event) => {
       receivedSpeechResult = true
+      if (recognitionStartWatchdog) {
+        clearTimeout(recognitionStartWatchdog)
+        recognitionStartWatchdog = null
+      }
       const transcript = event.results[0][0].transcript
       console.log('[J.U.D.I.S Speech] Result:', transcript)
       processSpokenCommand(transcript)
@@ -491,6 +506,10 @@
 
     rec.onerror = (event) => {
       console.warn('[J.U.D.I.S Speech] Error:', event.error)
+      if (recognitionStartWatchdog) {
+        clearTimeout(recognitionStartWatchdog)
+        recognitionStartWatchdog = null
+      }
       if (recordingCancelledByDrag) {
         recordingCancelledByDrag = false
         return
@@ -504,6 +523,7 @@
     }
 
     rec.onend = () => {
+      lastRecognitionEndedAt = Date.now()
       // If we stopped but didn't receive any speech transcription
       setTimeout(() => {
         if (companionState === 'listening' || companionState === 'thinking') {
@@ -516,6 +536,26 @@
     }
 
     return rec
+  }
+
+  // Some mobile browsers leave a just-started recognizer completely silent
+  // (no onstart, no onerror) if it's restarted too soon after the previous
+  // session ended. This watchdog catches that stuck state and recovers
+  // instead of leaving the bubble frozen on "Escuchando..." forever.
+  function armRecognitionStartWatchdog() {
+    if (recognitionStartWatchdog) clearTimeout(recognitionStartWatchdog)
+    recognitionStartWatchdog = setTimeout(() => {
+      recognitionStartWatchdog = null
+      if (companionState === 'listening') {
+        console.warn('[J.U.D.I.S Speech] Watchdog: recognition never started, resetting.')
+        if (recognition) {
+          try { recognition.abort() } catch (e) {}
+        }
+        isHotkeyActive = false
+        updateCompanionState('speaking')
+        updateCompanionBubble('No pude activar el micrófono, intenta de nuevo 🎙️')
+      }
+    }, 1500)
   }
 
   async function startRecording() {
@@ -536,11 +576,31 @@
     updateCompanionBubble('Escuchando...')
 
     if (SpeechRecognition) {
-      recognition = createRecognition()
-      try {
-        recognition.start()
-      } catch (e) {
-        console.warn('SpeechRecognition already started or error:', e)
+      const beginRecognition = () => {
+        recognition = createRecognition()
+        try {
+          recognition.start()
+          armRecognitionStartWatchdog()
+        } catch (e) {
+          console.warn('SpeechRecognition failed to start:', e)
+          isHotkeyActive = false
+          updateCompanionState('speaking')
+          updateCompanionBubble('No pude activar el micrófono, intenta de nuevo 🎙️')
+        }
+      }
+
+      // Once permission has been granted at least once, leave a short gap
+      // since the previous session ended before restarting — starting a new
+      // native recognizer session too soon after the last one is a common
+      // cause of the "goes silent" behavior on real devices.
+      const cooldownRemaining = micPermissionGranted
+        ? Math.max(0, 350 - (Date.now() - lastRecognitionEndedAt))
+        : 0
+
+      if (cooldownRemaining > 0) {
+        setTimeout(beginRecognition, cooldownRemaining)
+      } else {
+        beginRecognition()
       }
     } else {
       try {
@@ -563,6 +623,11 @@
     if (!isHotkeyActive) return
     isHotkeyActive = false
     updateCompanionState('thinking')
+
+    if (recognitionStartWatchdog) {
+      clearTimeout(recognitionStartWatchdog)
+      recognitionStartWatchdog = null
+    }
 
     const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
@@ -620,6 +685,10 @@
     if (thinkingTimeout) {
       clearTimeout(thinkingTimeout)
       thinkingTimeout = null
+    }
+    if (recognitionStartWatchdog) {
+      clearTimeout(recognitionStartWatchdog)
+      recognitionStartWatchdog = null
     }
     if (recognition) {
       try { recognition.abort() } catch (e) {}
