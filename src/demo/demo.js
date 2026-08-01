@@ -473,9 +473,38 @@
   let micPermissionGranted = false
   let lastRecognitionEndedAt = 0
   let recognitionStartedThisSession = false
+  let recognitionRestartCount = 0
+  let recognitionFatalError = false
+  const MAX_RECOGNITION_RESTARTS = 4
 
   function logLine(text) {
     return `<div class="comp-log">🪵 ${text}</div>`
+  }
+
+  // While the user is still holding the talk button, a session that ends
+  // with nothing captured almost always means the native engine's own
+  // silence timeout closed it before they started speaking (very common on
+  // iOS if there's a beat of silence right after pressing). In that case we
+  // want to seamlessly open a new session rather than surface a failure —
+  // from the user's perspective they're still mid hold-to-talk.
+  function canAutoRestart() {
+    return isHotkeyActive &&
+      companionState === 'listening' &&
+      !receivedSpeechResult &&
+      !recognitionFatalError &&
+      recognitionRestartCount < MAX_RECOGNITION_RESTARTS
+  }
+
+  function beginRecognitionSession() {
+    recognition = createRecognition()
+    try {
+      recognition.start()
+    } catch (e) {
+      console.warn('SpeechRecognition failed to start:', e)
+      isHotkeyActive = false
+      updateCompanionState('speaking')
+      updateCompanionBubble('No pude activar el micrófono, intenta de nuevo 🎙️')
+    }
   }
 
   // Builds a fresh recognizer for every recording. Reusing one long-lived
@@ -511,17 +540,33 @@
         recordingAbortedByFailsafe = false
         return
       }
+      const isPermissionError = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+      if (isPermissionError) recognitionFatalError = true
+
+      // A bare 'no-speech' timeout while the button is still held is exactly
+      // the case onend will seamlessly restart from — don't flash an error
+      // the user will never actually need to act on.
+      if (!isPermissionError && canAutoRestart()) return
+
       const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
       updateCompanionState('speaking')
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      if (isPermissionError) {
         updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.' + logLine(`error: ${event.error} · mic iniciado: ${recognitionStartedThisSession}`))
       } else {
-        updateCompanionBubble(`No te escuché nada, intenta de nuevo 🎙️` + logLine(`error: ${event.error} · duración: ${elapsed}s · mic iniciado: ${recognitionStartedThisSession}`))
+        updateCompanionBubble(`No te escuché nada, intenta de nuevo 🎙️` + logLine(`error: ${event.error} · duración: ${elapsed}s · intentos: ${recognitionRestartCount} · mic iniciado: ${recognitionStartedThisSession}`))
       }
     }
 
     rec.onend = () => {
       lastRecognitionEndedAt = Date.now()
+
+      if (canAutoRestart()) {
+        recognitionRestartCount++
+        console.warn(`[J.U.D.I.S Speech] No result yet, auto-restarting (attempt ${recognitionRestartCount})`)
+        setTimeout(beginRecognitionSession, 350)
+        return
+      }
+
       // If we stopped but didn't receive any speech transcription
       setTimeout(() => {
         if (companionState === 'listening' || companionState === 'thinking') {
@@ -530,7 +575,7 @@
             updateCompanionState('speaking')
             updateCompanionBubble(
               '<div class="comp-heard">⚠️ No detecté ninguna palabra</div>Intenta de nuevo, hablando un poco más fuerte 🎙️' +
-              logLine(`sin error nativo · duración: ${elapsed}s · mic iniciado: ${recognitionStartedThisSession}`)
+              logLine(`sin error nativo · duración: ${elapsed}s · intentos: ${recognitionRestartCount} · mic iniciado: ${recognitionStartedThisSession}`)
             )
           }
         }
@@ -545,6 +590,8 @@
     isHotkeyActive = true
     receivedSpeechResult = false
     recognitionStartedThisSession = false
+    recognitionRestartCount = 0
+    recognitionFatalError = false
     recordingStartTime = Date.now()
     updateCompanionState('listening')
 
@@ -559,18 +606,6 @@
     updateCompanionBubble('Escuchando...')
 
     if (SpeechRecognition) {
-      const beginRecognition = () => {
-        recognition = createRecognition()
-        try {
-          recognition.start()
-        } catch (e) {
-          console.warn('SpeechRecognition failed to start:', e)
-          isHotkeyActive = false
-          updateCompanionState('speaking')
-          updateCompanionBubble('No pude activar el micrófono, intenta de nuevo 🎙️')
-        }
-      }
-
       // Once permission has been granted at least once, leave a short gap
       // since the previous session ended before restarting — starting a new
       // native recognizer session too soon after the last one is a common
@@ -580,9 +615,9 @@
         : 0
 
       if (cooldownRemaining > 0) {
-        setTimeout(beginRecognition, cooldownRemaining)
+        setTimeout(beginRecognitionSession, cooldownRemaining)
       } else {
-        beginRecognition()
+        beginRecognitionSession()
       }
     } else {
       try {
@@ -708,7 +743,7 @@
     const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
     const errorNote = errorReason
       ? `<div class="comp-heard">⚠️ No pude grabarte: ${errorReason}</div>` +
-        logLine(`duración: ${elapsed}s · mic iniciado: ${recognitionStartedThisSession}`)
+        logLine(`duración: ${elapsed}s · intentos: ${recognitionRestartCount} · mic iniciado: ${recognitionStartedThisSession}`)
       : ''
     updateCompanionBubble(errorNote + 'Te guiaré igual para encontrar los 3 productos más rápido. 🚀')
 
