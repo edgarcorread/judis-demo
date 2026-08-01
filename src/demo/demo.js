@@ -443,6 +443,15 @@
     if (isHotkeyActive) return
     isHotkeyActive = true
     updateCompanionState('listening')
+
+    // Check if browser context allows microphone/speech access (HTTPS or localhost)
+    const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+    if (!isSecure) {
+      updateCompanionBubble('🎙️ Escuchando... (Simulado por conexión local HTTP)');
+      return;
+    }
+
     updateCompanionBubble('Escuchando...')
 
     if (recognition) {
@@ -470,6 +479,13 @@
     if (!isHotkeyActive) return
     isHotkeyActive = false
     updateCompanionState('thinking')
+
+    const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+    if (!isSecure) {
+      setTimeout(simulateTranscriptionResponse, 1000)
+      return;
+    }
 
     if (recognition) {
       try {
