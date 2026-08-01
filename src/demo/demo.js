@@ -869,6 +869,31 @@
       })
     }
 
+    // Nav restart click handler (reloads the page)
+    document.querySelectorAll('.nav-restart').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault()
+        window.location.reload()
+      })
+    })
+
+    // Nav schedule click handlers (redirects to scheduling link)
+    document.querySelectorAll('.nav-schedule').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault()
+        window.open('https://calendly.com/', '_blank')
+      })
+    })
+
+    // Final card schedule button (redirects to scheduling link)
+    const scheduleMeetingBtn = document.getElementById('btn-schedule-meeting')
+    if (scheduleMeetingBtn) {
+      scheduleMeetingBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        window.open('https://calendly.com/', '_blank')
+      })
+    }
+
     console.log('[J.U.D.I.S Demo] initialized successfully.')
   }
 
