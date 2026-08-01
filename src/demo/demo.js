@@ -491,7 +491,7 @@
       if (event.error === 'not-allowed') {
         updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.')
       } else {
-        updateCompanionBubble('No detecté la palabra ayuda, dila y te ayudo')
+        updateCompanionBubble('No te escuché nada, intenta de nuevo 🎙️')
       }
     }
 
@@ -501,7 +501,7 @@
         if (companionState === 'listening' || companionState === 'thinking') {
           if (!receivedSpeechResult) {
             updateCompanionState('speaking')
-            updateCompanionBubble('No detecté la palabra ayuda, dila y te ayudo')
+            updateCompanionBubble('No te escuché nada, intenta de nuevo 🎙️')
           }
         }
       }, 1800)
@@ -607,7 +607,7 @@
     if (text.includes('agendar') || text.includes('llamada') || text.includes('reunion') || text.includes('cita')) {
       updateCompanionBubble('¡Entendido! Señalé el botón de <strong>"Agendar"</strong> en la pantalla. Haz clic allí para programar nuestra llamada. 📅')
       highlightScheduleButton()
-    } else if (text.includes('beneficio') || text.includes('para que sirve') || text.includes('que es') || text.includes('que hace') || text.includes('ventajas') || text.includes('sirve') || text.includes('funcion') || text.includes('funciones')) {
+    } else if (text.includes('beneficio') || text.includes('ventajas') || text.includes('funcion') || text.includes('funciones') || text.includes('para que sirve') || text.includes('que es esto') || text.includes('que es judis') || text.includes('que eres') || text.includes('que haces') || text.includes('quien eres')) {
       updateCompanionBubble('Soy un asistente que te ayuda a finalizar las acciones de usuarios en tu página, tipo guiarte en una compra o solucionar dudas complejas sin fricciones. 🚀')
     } else if (text.includes('ayud') || text.includes('objeto') || text.includes('producto') || text.includes('mostrar') || text.includes('buscar') || text.includes('guiar') || text.includes('iniciar') || text.includes('comenzar') || text.includes('detectar')) {
       updateCompanionBubble('¡Perfecto! Te guiaré secuencialmente para encontrar los 3 productos en la pantalla. 🚀')
@@ -620,8 +620,8 @@
       }, 1500)
     } else {
       const isMobile = window.innerWidth <= 600
-      const msg = isMobile 
-        ? 'No detecté la palabra ayuda, dila y te ayudo' 
+      const msg = isMobile
+        ? `Escuché: "<em>${transcript}</em>". Di "ayuda" 😊`
         : `Escuché que dijiste: "<em>${transcript}</em>". Pero para ayudarte, necesito que me pidas ayuda para encontrar los objetos. 😊`;
       updateCompanionBubble(msg);
     }
