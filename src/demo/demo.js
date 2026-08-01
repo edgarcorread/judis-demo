@@ -765,7 +765,7 @@
 
       // Inform user how to trigger J.U.D.I.S via bubble
       const welcomeMsg = window.innerWidth <= 600
-        ? '¡Hola! Soy J.U.D.I.S. <strong>Mantén presionada mi foto</strong> mientras hablas y <strong>suéltala</strong> al terminar para hablarme.'
+        ? '¡Hola! Soy J.U.D.I.S. Mantén presionada mi foto para hablarme.'
         : '¡Hola! Soy J.U.D.I.S. Mantén presionadas las teclas <strong>J + U</strong> en tu teclado para hablarme.'
       updateCompanionBubble(welcomeMsg)
       updateCompanionState('speaking')
