@@ -138,17 +138,17 @@ body{
    WALLET CARD — idéntica al diseño original
 ══════════════════════════════════════════════════ */
 .wallet-card{
-  background:#fff;border-radius:var(--r-xl);padding:36px 32px 32px;
+  background:#000000;border-radius:var(--r-xl);border:2px solid var(--pink);padding:36px 32px 32px;
   max-width:380px;width:100%;text-align:left;
   box-shadow:0 12px 50px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.06);
   position:relative;overflow:hidden;
 }
-.wallet-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.wallet-header{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;width:100%}
 .wallet-star{font-size:24px;color:var(--pink);line-height:1}
 .wallet-star.big{font-size:36px}
-.wallet-brand{font-size:20px;font-weight:900;color:#1a1a2e;letter-spacing:.04em}
+.wallet-brand{font-size:20px;font-weight:900;color:var(--txt);letter-spacing:.04em}
 .wallet-brand.big{font-size:32px;color:var(--pink)}
-.wallet-question{font-size:15px;color:#555;margin-bottom:20px;line-height:1.5}
+.wallet-question{font-size:15px;color:var(--txt2);margin-bottom:20px;line-height:1.5;text-align:center}
 .wallet-btn{
   display:block;width:100%;
   background:var(--pink);color:#fff;border:none;border-radius:var(--r-md);
@@ -160,8 +160,8 @@ body{
 .wallet-btn:active{transform:translateY(0)}
 
 /* Disabled/activated state */
-.wallet-card.enabled{background:linear-gradient(135deg,#fce4ec,#fff);border:2px solid var(--pink)}
-.wallet-card.enabled .wallet-btn{background:#999;pointer-events:none;box-shadow:none}
+.wallet-card.enabled{background:#000000;border:2px solid var(--pink)}
+.wallet-card.enabled .wallet-btn{background:#333333;color:#888888;pointer-events:none;box-shadow:none}
 
 /* ── Final card ────────────────────────────────── */
 .final-card{background:var(--bg-layer);border:1px solid var(--border-b);border-radius:var(--r-xl);padding:48px;max-width:600px;width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5),0 0 40px var(--pink-glow);position:relative;overflow:hidden}
