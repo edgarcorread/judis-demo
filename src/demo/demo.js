@@ -850,42 +850,15 @@
       })
     }
 
-    // Avatar Press and Hold / Drag Interaction (For Mobile and Touch Support)
+    // Avatar Press and Hold Interaction (For Mobile and Touch Support)
     const compOrbEl = companionEl ? companionEl.querySelector('.comp-orb') : null
-    let dragStartX = 0
-    let dragStartY = 0
-    let compStartX = 0
-    let compStartY = 0
-    let lastPressTime = 0
-
     if (compOrbEl) {
       // Prevent context menu on long press
       compOrbEl.addEventListener('contextmenu', (e) => e.preventDefault())
 
       const handlePressStart = (e) => {
         if (!isJudisEnabled) return
-        
-        // Prevent back-to-back touchstart and mousedown double execution (lock-up fix)
-        const now = Date.now()
-        if (now - lastPressTime < 300) {
-          e.preventDefault()
-          return
-        }
-        lastPressTime = now
-        
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY
-        
-        dragStartX = clientX
-        dragStartY = clientY
-        
-        const rect = companionEl.getBoundingClientRect()
-        compStartX = rect.left
-        compStartY = rect.top
-        isDragging = false
-
         e.preventDefault()
-        
         // If already listening (e.g., got stuck during native permission dialog blur), tap again to toggle stop
         if (companionState === 'listening') {
           stopAndProcessRecording()
@@ -896,41 +869,11 @@
         }
       }
 
-      const handleDragMove = (e) => {
-        if (!isJudisEnabled || !isHotkeyActive) return
-        
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY
-        
-        const deltaX = clientX - dragStartX
-        const deltaY = clientY - dragStartY
-        
-        // Threshold: must move more than 5px to initiate drag
-        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-          isDragging = true
-        }
-        
-        if (isDragging) {
-          e.preventDefault()
-          let newLeft = compStartX + deltaX
-          let newTop = compStartY + deltaY
-          
-          // Bounds checking
-          const compWidth = companionEl.offsetWidth || 60
-          const compHeight = companionEl.offsetHeight || 60
-          newLeft = Math.max(5, Math.min(newLeft, window.innerWidth - compWidth - 5))
-          newTop = Math.max(5, Math.min(newTop, window.innerHeight - compHeight - 5))
-          
-          companionEl.style.left = `${newLeft}px`
-          companionEl.style.top = `${newTop}px`
-          companionEl.style.right = 'auto'
-          companionEl.style.bottom = 'auto'
-          companionEl.style.transform = 'none'
-        }
-      }
-
       const handlePressEnd = (e) => {
         if (!isJudisEnabled) return
+        if (e.target === compOrbEl) {
+          e.preventDefault()
+        }
         if (isHotkeyActive) {
           stopAndProcessRecording()
         }
@@ -938,10 +881,6 @@
 
       compOrbEl.addEventListener('mousedown', handlePressStart)
       compOrbEl.addEventListener('touchstart', handlePressStart, { passive: false })
-      
-      // Bind moves globally to window so dragging stays smooth if cursor/finger leaves the orb boundary
-      window.addEventListener('mousemove', handleDragMove, { passive: false })
-      window.addEventListener('touchmove', handleDragMove, { passive: false })
 
       // Global window listeners for robust release, blur (permission prompt interrupts) and cancel events
       window.addEventListener('mouseup', handlePressEnd)
