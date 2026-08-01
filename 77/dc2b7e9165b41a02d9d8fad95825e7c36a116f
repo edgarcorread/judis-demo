@@ -1,0 +1,19 @@
+src/demo/demo.js
+  s_3a6909ca426c59::t_f01a9d62fc20af 505,508,519
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "77dc2b7e9165b41a02d9d8fad95825e7c36a116f",
+  "prompts": {},
+  "sessions": {
+    "s_3a6909ca426c59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "830720af-54ff-41d5-bf66-ce7ecf0f181a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "edgarcorread <edgarcorread@gmail.com>"
+    }
+  }
+}
