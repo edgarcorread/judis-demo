@@ -541,6 +541,13 @@
   let recognitionStartedThisSession = false
   let recognitionRestartCount = 0
   let recognitionFatalError = false
+  // Some browsers (seen on iOS Safari) expose window.SpeechRecognition but
+  // the underlying speech service itself always refuses with
+  // 'service-not-allowed', regardless of mic/dictation/language settings —
+  // a platform limitation, not something a retry can fix. Once we see it,
+  // stop attempting real recognition for the rest of the session and fall
+  // back to the simulated/guided flow instead of repeating the same error.
+  let speechServiceUnavailable = false
   const MAX_RECOGNITION_RESTARTS = 4
 
   function logLine(text) {
@@ -622,8 +629,25 @@
         recordingAbortedByFailsafe = false
         return
       }
-      const isPermissionError = event.error === 'not-allowed' || event.error === 'service-not-allowed'
-      if (isPermissionError) recognitionFatalError = true
+      const isPermissionError = event.error === 'not-allowed'
+      const isServiceUnavailable = event.error === 'service-not-allowed'
+      if (isPermissionError || isServiceUnavailable) recognitionFatalError = true
+
+      // The speech *service* itself refusing (as opposed to the user
+      // denying mic access) isn't something asking again will ever fix on
+      // this browser — stop trying real recognition for the rest of the
+      // session and quietly continue the demo via the simulated flow.
+      if (isServiceUnavailable) {
+        speechServiceUnavailable = true
+        console.warn('[J.U.D.I.S Speech] service-not-allowed — disabling real recognition for this session.')
+        isHotkeyActive = false
+        if (thinkingTimeout) {
+          clearTimeout(thinkingTimeout)
+          thinkingTimeout = null
+        }
+        simulateTranscriptionResponse('el servicio de voz de este navegador no está disponible')
+        return
+      }
 
       // A bare 'no-speech' timeout while the button is still held is exactly
       // the case onend will seamlessly restart from — don't flash an error
@@ -693,19 +717,26 @@
       return;
     }
 
-    if (!SpeechRecognition) {
-      // This browser doesn't expose the Web Speech API at all (common on
-      // iOS Safari, unlike Chrome/iOS which is also WebKit-based but does
-      // support it in recent versions). We can still capture audio via
-      // MediaRecorder below, but there is no real transcription available
-      // in that path — say so up front instead of showing "Escuchando..."
-      // as if voice recognition were about to kick in.
-      updateCompanionBubble('🎙️ Escuchando (modo simulado — tu navegador no soporta reconocimiento de voz nativo)' + logLine('SpeechRecognition: no disponible en este navegador'))
+    const canUseRealRecognition = SpeechRecognition && !speechServiceUnavailable
+
+    if (!canUseRealRecognition) {
+      // Either this browser doesn't expose the Web Speech API at all
+      // (common on iOS Safari, unlike Chrome/iOS which is also
+      // WebKit-based but does support it in recent versions), or we
+      // already learned this session that the speech service refuses to
+      // engage. We can still capture audio via MediaRecorder below, but
+      // there is no real transcription available in that path — say so up
+      // front instead of showing "Escuchando..." as if voice recognition
+      // were about to kick in.
+      const reason = SpeechRecognition
+        ? 'el servicio de reconocimiento de voz de este navegador no está disponible'
+        : 'SpeechRecognition no disponible en este navegador'
+      updateCompanionBubble('🎙️ Escuchando (modo simulado)' + logLine(reason))
     } else {
       updateCompanionBubble('Escuchando...')
     }
 
-    if (SpeechRecognition) {
+    if (canUseRealRecognition) {
       // iOS Safari sometimes never shows the mic permission dialog when
       // SpeechRecognition.start() is called directly — explicitly
       // requesting getUserMedia first reliably forces/confirms the system
