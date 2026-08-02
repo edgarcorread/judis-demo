@@ -706,6 +706,27 @@
     }
 
     if (SpeechRecognition) {
+      // iOS Safari sometimes never shows the mic permission dialog when
+      // SpeechRecognition.start() is called directly — explicitly
+      // requesting getUserMedia first reliably forces/confirms the system
+      // prompt. Once granted, this resolves instantly on later presses, so
+      // it's cheap to always do.
+      if (!micPermissionGranted) {
+        try {
+          const primerStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          primerStream.getTracks().forEach(t => t.stop())
+        } catch (err) {
+          console.warn('Mic permission priming failed:', err)
+          isHotkeyActive = false
+          updateCompanionState('speaking')
+          updateCompanionBubble(
+            'No pude acceder al micrófono. Revisa los permisos del sitio en Ajustes > Safari.' +
+            logLine(`getUserMedia error: ${err && err.name ? err.name : err}`)
+          )
+          return
+        }
+      }
+
       // Once permission has been granted at least once, leave a short gap
       // since the previous session ended before restarting — starting a new
       // native recognizer session too soon after the last one is a common
