@@ -693,7 +693,17 @@
       return;
     }
 
-    updateCompanionBubble('Escuchando...')
+    if (!SpeechRecognition) {
+      // This browser doesn't expose the Web Speech API at all (common on
+      // iOS Safari, unlike Chrome/iOS which is also WebKit-based but does
+      // support it in recent versions). We can still capture audio via
+      // MediaRecorder below, but there is no real transcription available
+      // in that path — say so up front instead of showing "Escuchando..."
+      // as if voice recognition were about to kick in.
+      updateCompanionBubble('🎙️ Escuchando (modo simulado — tu navegador no soporta reconocimiento de voz nativo)' + logLine('SpeechRecognition: no disponible en este navegador'))
+    } else {
+      updateCompanionBubble('Escuchando...')
+    }
 
     if (SpeechRecognition) {
       // Once permission has been granted at least once, leave a short gap
@@ -720,6 +730,10 @@
         mediaRecorder.start(100)
       } catch (err) {
         console.warn('Microphone access not allowed or unavailable. Simulating audio capture.', err)
+        updateCompanionBubble(
+          '🎙️ No pude acceder al micrófono' +
+          logLine(`getUserMedia error: ${err && err.name ? err.name : err}`)
+        )
       }
     }
   }
