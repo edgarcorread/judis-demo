@@ -580,6 +580,18 @@
       recognitionRestartCount < MAX_RECOGNITION_RESTARTS
   }
 
+  // On iOS Safari we hold our own getUserMedia stream alive alongside
+  // SpeechRecognition (see startRecording), since we have no access to the
+  // internal MediaStream the recognizer manages itself — and stopping that
+  // internal one reliably is exactly what's been failing. Stopping tracks
+  // on a stream we hold a direct reference to is a guaranteed way to
+  // release the hardware regardless of what the recognizer does.
+  function stopExplicitMicStream() {
+    if (!micStream) return
+    micStream.getTracks().forEach(t => t.stop())
+    micStream = null
+  }
+
   function beginRecognitionSession() {
     if (!isHotkeyActive) return
 
@@ -788,6 +800,27 @@
       // that's no longer held once that await resolves.
       if (!isHotkeyActive) return
 
+      if (isIOSSafari) {
+        // SpeechRecognition manages its own internal MediaStream that we
+        // have no access to — stopping *that* one reliably is exactly what
+        // keeps failing. Requesting and holding our own stream alongside it
+        // means we always have real tracks we can stop ourselves on
+        // release, regardless of what the recognizer's internal session
+        // does under the hood.
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        } catch (err) {
+          console.warn('Failed to acquire explicit mic stream for Safari:', err)
+        }
+        if (!isHotkeyActive) {
+          if (micStream) {
+            micStream.getTracks().forEach(t => t.stop())
+            micStream = null
+          }
+          return
+        }
+      }
+
       // Once permission has been granted at least once, leave a short gap
       // since the previous session ended before restarting — starting a new
       // native recognizer session too soon after the last one is a common
@@ -851,6 +884,7 @@
           recordingAbortedByFailsafe = true
           try { recognition.abort() } catch (e) {}
         }
+        stopExplicitMicStream()
         recordingFinalized = true
         if (receivedSpeechResult && accumulatedTranscript) {
           console.warn('[J.U.D.I.S Speech] Failsafe: recognition hung after producing a result, finalizing anyway.')
@@ -882,6 +916,7 @@
           // accumulatedTranscript regardless, so this doesn't lose it.
           if (isIOSSafari) {
             recognition.abort()
+            stopExplicitMicStream()
           } else {
             recognition.stop()
           }
@@ -919,6 +954,7 @@
     }
     if (recognition) {
       try { recognition.abort() } catch (e) {}
+      stopExplicitMicStream()
     } else if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       try { mediaRecorder.stop() } catch (e) {}
       if (micStream) {
