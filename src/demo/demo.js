@@ -759,6 +759,14 @@
           // Safari, which otherwise left every single press re-priming
           // (and re-engaging) the microphone instead of just the first one.
           micPermissionGranted = true
+          // On iOS Safari, starting SpeechRecognition immediately after the
+          // priming stream's tracks are stopped — with no gap at all — can
+          // leave the very first real session stuck in limbo (it never
+          // truly starts or ends, so the mic never releases). Backdating
+          // lastRecognitionEndedAt makes the existing cooldown logic below
+          // apply its short gap to this first session too, not just to
+          // restarts after a previous one actually ran.
+          if (isIOSSafari) lastRecognitionEndedAt = Date.now()
         } catch (err) {
           console.warn('Mic permission priming failed:', err)
           isHotkeyActive = false
