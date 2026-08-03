@@ -561,6 +561,14 @@
   // back to the simulated/guided flow instead of repeating the same error.
   let speechServiceUnavailable = false
   const MAX_RECOGNITION_RESTARTS = 4
+  // iOS Safari shares one underlying audio session across getUserMedia,
+  // SpeechRecognition and AudioContext. Creating/resuming an AudioContext
+  // directly inside the user gesture is a known workaround for that shared
+  // session staying in a state where the mic hardware activates but other
+  // audio APIs (SpeechRecognition's own internal engine included) never
+  // actually finish initializing. Reused across presses rather than
+  // recreated — browsers cap how many contexts can exist at once.
+  let audioContext = null
 
   function logLine(text) {
     return `<div class="comp-log">🪵 ${text}</div>`
@@ -760,6 +768,19 @@
     recordingFinalized = false
     recordingStartTime = Date.now()
     updateCompanionState('listening')
+
+    if (isIOSSafari) {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)()
+        }
+        if (audioContext.state === 'suspended') {
+          audioContext.resume()
+        }
+      } catch (e) {
+        console.warn('[J.U.D.I.S Speech] AudioContext unlock failed:', e)
+      }
+    }
 
     // Check if browser context allows microphone/speech access (HTTPS or localhost)
     const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
