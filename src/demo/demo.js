@@ -549,6 +549,10 @@
   let recognitionStartedThisSession = false
   let recognitionRestartCount = 0
   let recognitionFatalError = false
+  // Guards against processing the same recording twice — the failsafe
+  // below can finalize a session before a late-arriving onend does, and
+  // without this both would fire processSpokenCommand/simulateTranscriptionResponse.
+  let recordingFinalized = false
   // Some browsers (seen on iOS Safari) expose window.SpeechRecognition but
   // the underlying speech service itself always refuses with
   // 'service-not-allowed', regardless of mic/dictation/language settings —
@@ -695,6 +699,8 @@
       // Session actually captured something — finalize it now that we know
       // no more results are coming, regardless of how long the hold lasted.
       if (receivedSpeechResult && accumulatedTranscript) {
+        if (recordingFinalized) return
+        recordingFinalized = true
         processSpokenCommand(accumulatedTranscript)
         return
       }
@@ -729,6 +735,7 @@
     recognitionStartedThisSession = false
     recognitionRestartCount = 0
     recognitionFatalError = false
+    recordingFinalized = false
     recordingStartTime = Date.now()
     updateCompanionState('listening')
 
@@ -828,17 +835,32 @@
 
     if (thinkingTimeout) clearTimeout(thinkingTimeout)
 
-    // Failsafe: if SpeechRecognition hangs on mobile (very common in iOS), fallback to simulation after 4.5 seconds
+    // Failsafe: onend isn't trustworthy on iOS Safari — a session can hang
+    // in limbo forever after abort() without ever firing onend or onerror,
+    // which is exactly what left the UI stuck on "thinking"/mic-on
+    // indefinitely. Don't wait on the recognizer to confirm anything —
+    // force a resolution shortly after release regardless of what it does.
+    // If a transcript already arrived (even if onend never followed up to
+    // finalize it), use it instead of discarding a command the user did
+    // successfully say.
+    const failsafeDelay = isIOSSafari ? 1200 : 4500
     thinkingTimeout = setTimeout(() => {
-      if (companionState === 'thinking' && !receivedSpeechResult) {
-        console.warn('[J.U.D.I.S Speech] Failsafe triggered: SpeechRecognition hung.')
+      if (recordingFinalized) return
+      if (companionState === 'thinking') {
         if (recognition) {
           recordingAbortedByFailsafe = true
           try { recognition.abort() } catch (e) {}
         }
-        simulateTranscriptionResponse('se abortó la grabación, tardó demasiado en responder')
+        recordingFinalized = true
+        if (receivedSpeechResult && accumulatedTranscript) {
+          console.warn('[J.U.D.I.S Speech] Failsafe: recognition hung after producing a result, finalizing anyway.')
+          processSpokenCommand(accumulatedTranscript)
+        } else {
+          console.warn('[J.U.D.I.S Speech] Failsafe triggered: SpeechRecognition hung.')
+          simulateTranscriptionResponse('se abortó la grabación, tardó demasiado en responder')
+        }
       }
-    }, 4500)
+    }, failsafeDelay)
 
     if (!isSecure) {
       setTimeout(simulateTranscriptionResponse, 1000)
