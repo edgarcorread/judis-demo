@@ -562,26 +562,9 @@
   let speechServiceUnavailable = false
   const MAX_RECOGNITION_RESTARTS = 4
 
-  // TEMPORARY: Safari keeps producing no result at all even with a full
-  // trailing-word buffer, and we have no way to see real device output —
-  // show a diagnostic on screen (Safari only) instead of staying silent,
-  // so we can see the actual error/state and stop guessing blind. Remove
-  // once the real cause on Safari is found; every other browser is
-  // unaffected and stays silent as before.
   function debugFailure(reason) {
-    if (!isIOSSafari) {
-      hideSpeechBubble()
-      return
-    }
     updateCompanionState('speaking')
-    updateCompanionBubble(
-      `<div class="comp-heard">🔧 Diagnóstico temporal</div>${reason}` +
-      logLine(`mic iniciado: ${recognitionStartedThisSession} · resultado recibido: ${receivedSpeechResult} · intentos: ${recognitionRestartCount} · idioma: ${navigator.language}`)
-    )
-  }
-
-  function logLine(text) {
-    return `<div class="comp-log">🪵 ${text}</div>`
+    updateCompanionBubble('No detecté la palabra ayuda, dila y te ayudo')
   }
 
   // While the user is still holding the talk button, a session that ends
@@ -658,19 +641,10 @@
     // engine close the mic on its own once it detects the end of speech.
     rec.continuous = !isIOSSafari
     rec.interimResults = false
-    // 'es-419' (generic Latin America) isn't a real locale Apple's on-device
-    // dictation engine recognizes, so iOS Safari/Chrome silently returns no
-    // transcript for every session — it only "worked" in testing on Chrome
-    // desktop because that uses Google's cloud speech backend instead.
-    // On iOS Safari, both a hardcoded 'es-MX' AND navigator.language (which
-    // itself reported 'es-419' on a real test device) reproduced the exact
-    // same silent hang — recognition.start() never firing onstart/onresult/
-    // onerror at all — because the on-device model for whatever locale we
-    // asked for isn't installed. We don't have a reliable way to know the
-    // right one, so leave rec.lang unset on Safari entirely and let it fall
-    // back to whatever the OS actually has configured/working for
-    // Dictation. Other browsers are unaffected and keep the explicit lang.
-    if (!isIOSSafari) rec.lang = 'es-MX'
+    // On any iOS device, leave rec.lang unset so the OS falls back to its
+    // own configured dictation language. Setting 'es-419' or 'es-MX'
+    // causes silent failures on many iOS devices.
+    if (!isIOS) rec.lang = 'es-MX'
 
     rec.onstart = () => {
       micPermissionGranted = true
