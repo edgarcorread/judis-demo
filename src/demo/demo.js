@@ -738,6 +738,7 @@
       // Session actually captured something — finalize it now that we know
       // no more results are coming, regardless of how long the hold lasted.
       if (receivedSpeechResult && accumulatedTranscript) {
+        stopExplicitMicStream()
         if (recordingFinalized) return
         recordingFinalized = true
         processSpokenCommand(accumulatedTranscript)
@@ -750,6 +751,10 @@
         setTimeout(beginRecognitionSession, 350)
         return
       }
+
+      // Terminal failure (no auto-restart left) — release the backup
+      // stream now that no further session will reuse it.
+      stopExplicitMicStream()
 
       // If we stopped but didn't receive any speech transcription, stay
       // silent — only a recognized command should surface anything on
@@ -959,17 +964,17 @@
       const releaseDelay = isMobile ? 1000 : 400
       setTimeout(() => {
         try {
-          // abort() releases the mic immediately instead of waiting for a
-          // final result like stop() does — on iOS Safari that wait is what
-          // left the mic indicator lit after release. Any speech already
-          // transcribed via onresult up to this point is preserved in
-          // accumulatedTranscript regardless, so this doesn't lose it.
-          if (isIOSSafari) {
-            recognition.abort()
-            stopExplicitMicStream()
-          } else {
-            recognition.stop()
-          }
+          // abort() discards any result the recognizer hasn't finished
+          // finalizing yet — now that onstart/onresult are actually firing
+          // on iOS Safari, using abort() here was cutting the session off
+          // before it could deliver the transcript, surfacing a bare
+          // "aborted" error instead of what was said. stop() asks the
+          // recognizer to wrap up gracefully and still fire a final
+          // onresult/onend; stopExplicitMicStream() (called from onend
+          // below) is what actually guarantees the hardware releases,
+          // regardless of how reliably the recognizer's own teardown
+          // behaves — so it doesn't need abort() to do that job too.
+          recognition.stop()
         } catch (e) {
           console.warn('SpeechRecognition stop failed', e)
           simulateTranscriptionResponse('no se pudo detener la grabación correctamente')
