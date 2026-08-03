@@ -868,15 +868,16 @@
 
     if (thinkingTimeout) clearTimeout(thinkingTimeout)
 
-    // Failsafe: onend isn't trustworthy on iOS Safari — a session can hang
-    // in limbo forever after abort() without ever firing onend or onerror,
-    // which is exactly what left the UI stuck on "thinking"/mic-on
-    // indefinitely. Don't wait on the recognizer to confirm anything —
-    // force a resolution shortly after release regardless of what it does.
-    // If a transcript already arrived (even if onend never followed up to
-    // finalize it), use it instead of discarding a command the user did
+    // Failsafe: onend isn't fully trustworthy on iOS Safari — a session can
+    // occasionally hang without firing onend or onerror. Don't wait forever
+    // on the recognizer to confirm anything — force a resolution eventually
+    // regardless of what it does. This needs to leave enough room after the
+    // ~1s release delay above for a normal onresult/onend to land first (see
+    // releaseDelay), or it would preempt a real answer that was seconds away
+    // from arriving normally. If a transcript already arrived by the time
+    // this fires, use it instead of discarding a command the user did
     // successfully say.
-    const failsafeDelay = isIOSSafari ? 1200 : 4500
+    const failsafeDelay = isIOSSafari ? 2500 : 4500
     thinkingTimeout = setTimeout(() => {
       if (recordingFinalized) return
       if (companionState === 'thinking') {
@@ -903,10 +904,13 @@
 
     if (recognition) {
       const isMobile = window.innerWidth <= 600
-      // On iOS Safari we don't wait for the usual trailing-word buffer —
-      // abort() there needs to fire as close to release as possible, since
-      // any delay reads as the mic "not letting go" of the button.
-      const releaseDelay = isIOSSafari ? 150 : (isMobile ? 1000 : 400)
+      // On iOS Safari, the mic is now released ourselves via
+      // stopExplicitMicStream() regardless of what the recognizer does, so
+      // there's no longer a reason to special-case a shorter delay here —
+      // doing so was cutting recognition off before onresult ever had a
+      // chance to fire, so nothing was ever heard/shown. Use the same
+      // trailing-word buffer as every other mobile browser.
+      const releaseDelay = isMobile ? 1000 : 400
       setTimeout(() => {
         try {
           // abort() releases the mic immediately instead of waiting for a
