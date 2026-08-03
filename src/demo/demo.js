@@ -645,7 +645,7 @@
           clearTimeout(thinkingTimeout)
           thinkingTimeout = null
         }
-        simulateTranscriptionResponse('el servicio de voz de este navegador no está disponible')
+        reportRecordingFailure('el servicio de voz de este navegador no está disponible')
         return
       }
 
@@ -810,12 +810,12 @@
           recordingAbortedByFailsafe = true
           try { recognition.abort() } catch (e) {}
         }
-        simulateTranscriptionResponse('se abortó la grabación, tardó demasiado en responder')
+        reportRecordingFailure('se abortó la grabación, tardó demasiado en responder')
       }
     }, 4500)
 
     if (!isSecure) {
-      setTimeout(simulateTranscriptionResponse, 1000)
+      setTimeout(reportRecordingFailure, 1000)
       return;
     }
 
@@ -826,7 +826,7 @@
           recognition.stop()
         } catch (e) {
           console.warn('SpeechRecognition stop failed', e)
-          simulateTranscriptionResponse('no se pudo detener la grabación correctamente')
+          reportRecordingFailure('no se pudo detener la grabación correctamente')
         }
       }, isMobile ? 1000 : 400)
     } else {
@@ -837,11 +837,11 @@
             micStream = null
           }
           mediaRecorder = null
-          simulateTranscriptionResponse()
+          reportRecordingFailure()
         }
         mediaRecorder.stop()
       } else {
-        setTimeout(simulateTranscriptionResponse, 1000)
+        setTimeout(reportRecordingFailure, 1000)
       }
     }
   }
@@ -898,23 +898,18 @@
     }
   }
 
-  function simulateTranscriptionResponse(errorReason) {
+  // Reports that a recording attempt failed to capture/process real speech.
+  // Deliberately does NOT advance the guide or pretend anything was
+  // understood — only a real transcribed "ayuda" (see processSpokenCommand)
+  // is allowed to trigger the guided flow.
+  function reportRecordingFailure(errorReason) {
     updateCompanionState('speaking')
     const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
-    const errorNote = errorReason
-      ? `<div class="comp-heard">⚠️ No pude grabarte: ${errorReason}</div>` +
-        logLine(`duración: ${elapsed}s · intentos: ${recognitionRestartCount} · mic iniciado: ${recognitionStartedThisSession}`)
-      : ''
-    updateCompanionBubble(errorNote + 'Te guiaré igual para encontrar los 3 productos más rápido. 🚀')
-
-    // Automatically trigger sequential guide step 1 and start chrono 2
-    setTimeout(() => {
-      if (!chrono2.running) {
-        startChrono(2)
-      }
-      guideStep = 0
-      triggerSequentialGuide()
-    }, 1500)
+    const detail = errorReason ? `No pude grabarte: ${errorReason}` : 'No te escuché'
+    updateCompanionBubble(
+      `<div class="comp-heard">⚠️ ${detail}</div>Intenta de nuevo y decime <strong>"ayuda"</strong> 🎙️` +
+      logLine(`duración: ${elapsed}s · intentos: ${recognitionRestartCount} · mic iniciado: ${recognitionStartedThisSession}`)
+    )
   }
 
   function highlightScheduleButton() {
