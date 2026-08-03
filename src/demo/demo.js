@@ -928,7 +928,15 @@
     // from arriving normally. If a transcript already arrived by the time
     // this fires, use it instead of discarding a command the user did
     // successfully say.
-    const failsafeDelay = isIOSSafari ? 2500 : 4500
+    //
+    // 2500ms was set back when real recognition never actually worked on
+    // iOS Safari, so the exact value didn't matter — now that the speech
+    // service is genuinely negotiating over the network (variable
+    // latency), that window is too tight for short holds: onstart can
+    // still be arriving after release, leaving no time left for
+    // onresult/onend before this fires and kills a session that would
+    // have succeeded. Give it the same room as desktop.
+    const failsafeDelay = isIOSSafari ? 6000 : 4500
     thinkingTimeout = setTimeout(() => {
       if (recordingFinalized) return
       if (companionState === 'thinking') {
