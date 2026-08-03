@@ -576,7 +576,7 @@
     updateCompanionState('speaking')
     updateCompanionBubble(
       `<div class="comp-heard">🔧 Diagnóstico temporal</div>${reason}` +
-      logLine(`mic iniciado: ${recognitionStartedThisSession} · resultado recibido: ${receivedSpeechResult} · intentos: ${recognitionRestartCount}`)
+      logLine(`mic iniciado: ${recognitionStartedThisSession} · resultado recibido: ${receivedSpeechResult} · intentos: ${recognitionRestartCount} · idioma: ${navigator.language}`)
     )
   }
 
@@ -662,7 +662,14 @@
     // dictation engine recognizes, so iOS Safari/Chrome silently returns no
     // transcript for every session — it only "worked" in testing on Chrome
     // desktop because that uses Google's cloud speech backend instead.
-    rec.lang = 'es-MX'
+    // On iOS Safari specifically, a hardcoded 'es-MX' can still mismatch
+    // whatever Dictation language is actually installed/enabled on the
+    // device in Settings, which shows up as recognition.start() hanging
+    // forever with no onstart/onresult/onerror at all — not an error, just
+    // silence, because the on-device model for that exact locale isn't
+    // available. navigator.language reflects the device's own configured
+    // language and is far more likely to match an installed dictation model.
+    rec.lang = isIOSSafari ? (navigator.language || 'es-MX') : 'es-MX'
 
     rec.onstart = () => {
       micPermissionGranted = true
