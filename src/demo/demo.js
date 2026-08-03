@@ -817,18 +817,24 @@
         // means we always have real tracks we can stop ourselves on
         // release, regardless of what the recognizer's internal session
         // does under the hood.
-        try {
-          micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        } catch (err) {
-          console.warn('Failed to acquire explicit mic stream for Safari:', err)
-        }
-        if (!isHotkeyActive) {
-          if (micStream) {
-            micStream.getTracks().forEach(t => t.stop())
-            micStream = null
-          }
-          return
-        }
+        //
+        // This used to be awaited here, blocking recognition.start() until
+        // it resolved — but that held two concurrent getUserMedia-derived
+        // audio sessions open at once during startup (ours + the
+        // recognizer's own internal one), which is a likely cause of
+        // onstart silently never firing on real devices: the hardware LED
+        // turns on from our stream, but the recognizer's internal session
+        // never finishes its own handshake. Fire it off in parallel instead
+        // of gating recognition.start() on it.
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(stream => {
+            if (!isHotkeyActive) {
+              stream.getTracks().forEach(t => t.stop())
+              return
+            }
+            micStream = stream
+          })
+          .catch(err => console.warn('Failed to acquire explicit mic stream for Safari:', err))
       }
 
       // Once permission has been granted at least once, leave a short gap
