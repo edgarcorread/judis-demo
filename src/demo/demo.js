@@ -532,17 +532,17 @@
      AUDIO RECORDING AND REAL SPEECH RECOGNITION
   ───────────────────────────────────────────────── */
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  // Every browser on iOS (Safari, Chrome, etc.) is required by Apple to run
-  // on WebKit's engine, including its SpeechRecognition implementation —
-  // and that implementation has a real, unfixable-from-JS bug where a
-  // continuous-mode session's abort()/stop() doesn't release the
-  // microphone hardware, leaving the recording indicator lit forever. No
-  // amount of cleanup on our side changes that, so real recognition is
-  // skipped entirely on iOS in favor of the simulated/guided flow below,
-  // which drives the mic via a plain getUserMedia + MediaRecorder stream
-  // we can reliably stop ourselves.
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  // Chrome/Firefox/Edge on iOS are still required to render via WebKit, but
+  // they ship their own SpeechRecognition plumbing rather than Safari's —
+  // in practice only Safari itself on iOS shows the continuous-mode
+  // abort()/stop() bug where the mic hardware never actually releases,
+  // leaving the recording indicator lit forever. Only Safari falls back to
+  // the simulated/guided flow below (plain getUserMedia + MediaRecorder,
+  // which we can reliably stop ourselves); Chrome iOS keeps real
+  // recognition since it isn't affected.
+  const isIOSSafari = isIOS && !/CriOS|FxiOS|EdgiOS|OPiOS|OPT\//.test(navigator.userAgent)
   let recognition = null
   let receivedSpeechResult = false
   let accumulatedTranscript = ''
@@ -755,18 +755,18 @@
       return;
     }
 
-    const canUseRealRecognition = SpeechRecognition && !speechServiceUnavailable && !isIOS
+    const canUseRealRecognition = SpeechRecognition && !speechServiceUnavailable && !isIOSSafari
 
     if (!canUseRealRecognition) {
-      // Either this is iOS (see isIOS above for why real recognition is
-      // never used there), this browser doesn't expose the Web Speech API
-      // at all, or we already learned this session that the speech service
-      // refuses to engage. We can still capture audio via MediaRecorder
-      // below, but there is no real transcription available in that path —
-      // say so up front instead of showing "Escuchando..." as if voice
-      // recognition were about to kick in.
-      const reason = isIOS
-        ? 'reconocimiento de voz real no disponible en iOS'
+      // Either this is iOS Safari specifically (see isIOSSafari above for
+      // why real recognition is never used there), this browser doesn't
+      // expose the Web Speech API at all, or we already learned this
+      // session that the speech service refuses to engage. We can still
+      // capture audio via MediaRecorder below, but there is no real
+      // transcription available in that path — say so up front instead of
+      // showing "Escuchando..." as if voice recognition were about to kick in.
+      const reason = isIOSSafari
+        ? 'reconocimiento de voz real no disponible en Safari iOS'
         : SpeechRecognition
           ? 'el servicio de reconocimiento de voz de este navegador no está disponible'
           : 'SpeechRecognition no disponible en este navegador'
