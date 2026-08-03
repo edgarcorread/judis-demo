@@ -575,6 +575,23 @@
     // ever stop, which is what left the mic indicator lit forever on iOS
     // Safari after release.
     if (!isHotkeyActive) return
+
+    // A previous session may still be lingering here — most commonly the
+    // auto-restart path (see canAutoRestart/onend below) replacing a
+    // session whose onstart/onend never fired, a known iOS Safari
+    // SpeechRecognition flakiness. Left alone, that orphaned instance keeps
+    // holding the microphone forever since nothing else references it once
+    // `recognition` is reassigned below. Detach its handlers (so its own
+    // abort doesn't trigger onerror/onend logic meant for the *new*
+    // session) and abort it before moving on.
+    if (recognition) {
+      recognition.onstart = null
+      recognition.onresult = null
+      recognition.onerror = null
+      recognition.onend = null
+      try { recognition.abort() } catch (e) {}
+    }
+
     recognition = createRecognition()
     try {
       recognition.start()
