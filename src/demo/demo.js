@@ -562,6 +562,24 @@
   let speechServiceUnavailable = false
   const MAX_RECOGNITION_RESTARTS = 4
 
+  // TEMPORARY: Safari keeps producing no result at all even with a full
+  // trailing-word buffer, and we have no way to see real device output —
+  // show a diagnostic on screen (Safari only) instead of staying silent,
+  // so we can see the actual error/state and stop guessing blind. Remove
+  // once the real cause on Safari is found; every other browser is
+  // unaffected and stays silent as before.
+  function debugFailure(reason) {
+    if (!isIOSSafari) {
+      hideSpeechBubble()
+      return
+    }
+    updateCompanionState('speaking')
+    updateCompanionBubble(
+      `<div class="comp-heard">🔧 Diagnóstico temporal</div>${reason}` +
+      logLine(`mic iniciado: ${recognitionStartedThisSession} · resultado recibido: ${receivedSpeechResult} · intentos: ${recognitionRestartCount}`)
+    )
+  }
+
   function logLine(text) {
     return `<div class="comp-log">🪵 ${text}</div>`
   }
@@ -702,7 +720,7 @@
       // Stay silent on screen for anything that isn't an actual recognized
       // command — only processSpokenCommand's "ayuda" flow should surface a
       // bubble. Reset back to idle so the button is ready for another try.
-      hideSpeechBubble()
+      debugFailure(`error nativo: <strong>${event.error}</strong>`)
     }
 
     rec.onend = () => {
@@ -730,7 +748,7 @@
       setTimeout(() => {
         if (companionState === 'listening' || companionState === 'thinking') {
           if (!receivedSpeechResult) {
-            hideSpeechBubble()
+            debugFailure('la sesión terminó sin error nativo y sin resultado')
           }
         }
       }, 1800)
@@ -1005,7 +1023,7 @@
   // allowed to trigger the guided flow, so this just resets for a retry.
   function simulateTranscriptionResponse(errorReason) {
     if (errorReason) console.warn('[J.U.D.I.S Speech] recording failed:', errorReason)
-    hideSpeechBubble()
+    debugFailure(errorReason || 'sin resultado')
   }
 
   function highlightScheduleButton() {
