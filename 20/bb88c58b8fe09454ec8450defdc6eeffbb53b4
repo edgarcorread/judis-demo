@@ -1,0 +1,21 @@
+src/demo/demo.js
+  s_438c00f5779ee0::t_b95abe3b8007d6 901-905,908-912
+  s_438c00f5779ee0::t_c22d240dc3d22d 648
+  s_438c00f5779ee0::t_63710f5be18183 813,818,829,840,844
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "20bb88c58b8fe09454ec8450defdc6eeffbb53b4",
+  "prompts": {},
+  "sessions": {
+    "s_438c00f5779ee0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef045762-a008-4a55-9b9b-446c2fa9988a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "edgarcorread <edgarcorread@gmail.com>"
+    }
+  }
+}
