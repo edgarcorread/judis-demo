@@ -654,11 +654,15 @@
     // producing zero transcript) whenever they took more than a couple
     // seconds to speak. We finalize manually via recognition.stop() on
     // release; see stopAndProcessRecording.
-    // On iOS Safari specifically, continuous mode is also what leaves the
-    // mic indicator lit forever — stop()/abort() don't reliably tear down a
-    // continuous session there. Single-utterance mode lets Safari's own
-    // engine close the mic on its own once it detects the end of speech.
-    rec.continuous = !isIOSSafari
+    // iOS Safari used to be excluded from continuous mode because it never
+    // reliably tore down a continuous session's mic on stop()/abort() —
+    // but single-utterance mode turned out to end the session on the first
+    // in-phrase pause, producing no result at all for anything longer than
+    // one short word ("hola" worked, "qué es un oso" didn't). Now that
+    // stopExplicitMicStream() guarantees the hardware releases regardless
+    // of the recognizer's own teardown, iOS Safari no longer needs this
+    // trade-off — use continuous mode everywhere.
+    rec.continuous = true
     rec.interimResults = false
     // On any iOS device, leave rec.lang unset so the OS falls back to its
     // own configured dictation language. Setting 'es-419' or 'es-MX'
