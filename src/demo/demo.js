@@ -662,14 +662,15 @@
     // dictation engine recognizes, so iOS Safari/Chrome silently returns no
     // transcript for every session — it only "worked" in testing on Chrome
     // desktop because that uses Google's cloud speech backend instead.
-    // On iOS Safari specifically, a hardcoded 'es-MX' can still mismatch
-    // whatever Dictation language is actually installed/enabled on the
-    // device in Settings, which shows up as recognition.start() hanging
-    // forever with no onstart/onresult/onerror at all — not an error, just
-    // silence, because the on-device model for that exact locale isn't
-    // available. navigator.language reflects the device's own configured
-    // language and is far more likely to match an installed dictation model.
-    rec.lang = isIOSSafari ? (navigator.language || 'es-MX') : 'es-MX'
+    // On iOS Safari, both a hardcoded 'es-MX' AND navigator.language (which
+    // itself reported 'es-419' on a real test device) reproduced the exact
+    // same silent hang — recognition.start() never firing onstart/onresult/
+    // onerror at all — because the on-device model for whatever locale we
+    // asked for isn't installed. We don't have a reliable way to know the
+    // right one, so leave rec.lang unset on Safari entirely and let it fall
+    // back to whatever the OS actually has configured/working for
+    // Dictation. Other browsers are unaffected and keep the explicit lang.
+    if (!isIOSSafari) rec.lang = 'es-MX'
 
     rec.onstart = () => {
       micPermissionGranted = true
