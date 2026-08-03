@@ -569,6 +569,12 @@
   }
 
   function beginRecognitionSession() {
+    // The button may have already been released (or iOS interrupted the
+    // touch with a cancel while the permission dialog was up) by the time
+    // this runs — starting a session now would open a mic nothing will
+    // ever stop, which is what left the mic indicator lit forever on iOS
+    // Safari after release.
+    if (!isHotkeyActive) return
     recognition = createRecognition()
     try {
       recognition.start()
@@ -762,6 +768,12 @@
         }
       }
 
+      // On iOS the native permission dialog interrupts the in-progress touch
+      // (fires touchcancel), which already stopped the recording via
+      // stopAndProcessRecording before the user even answered the prompt.
+      // Don't start a session for a button that's no longer held.
+      if (!isHotkeyActive) return
+
       // Once permission has been granted at least once, leave a short gap
       // since the previous session ended before restarting — starting a new
       // native recognizer session too soon after the last one is a common
@@ -778,6 +790,11 @@
     } else {
       try {
         micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        if (!isHotkeyActive) {
+          micStream.getTracks().forEach(t => t.stop())
+          micStream = null
+          return
+        }
         const opts = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? { mimeType: 'audio/webm;codecs=opus' } : {}
         mediaRecorder = new MediaRecorder(micStream, opts)
