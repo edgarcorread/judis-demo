@@ -1,0 +1,14 @@
+src/demo/demo.js
+  h_3095520f576b5d 567,644-647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "beec6b368d64957508fcc836b3cbb5ce11f1d379",
+  "prompts": {},
+  "humans": {
+    "h_3095520f576b5d": {
+      "author": "edgarcorread <edgarcorread@gmail.com>"
+    }
+  }
+}
