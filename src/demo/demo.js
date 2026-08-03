@@ -629,6 +629,10 @@
         recordingAbortedByFailsafe = false
         return
       }
+      if (recordingEndedOnRelease) {
+        recordingEndedOnRelease = false
+        return
+      }
       const isPermissionError = event.error === 'not-allowed'
       const isServiceUnavailable = event.error === 'service-not-allowed'
       if (isPermissionError || isServiceUnavailable) recognitionFatalError = true
@@ -792,6 +796,7 @@
 
   let thinkingTimeout = null
   let recordingAbortedByFailsafe = false
+  let recordingEndedOnRelease = false
 
   function stopAndProcessRecording() {
     if (!isHotkeyActive) return
@@ -823,7 +828,14 @@
       const isMobile = window.innerWidth <= 600
       setTimeout(() => {
         try {
-          recognition.stop()
+          // abort() (not stop()) — on iOS Safari, stop() was leaving the
+          // mic indicator lit indefinitely after release even once
+          // recognition had nothing left to say. abort() releases the
+          // microphone immediately; any speech already transcribed via
+          // onresult up to this point is preserved in accumulatedTranscript
+          // regardless, so this doesn't lose an already-captured command.
+          recordingEndedOnRelease = true
+          recognition.abort()
         } catch (e) {
           console.warn('SpeechRecognition stop failed', e)
           reportRecordingFailure('no se pudo detener la grabación correctamente')
