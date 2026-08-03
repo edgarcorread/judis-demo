@@ -562,9 +562,19 @@
   let speechServiceUnavailable = false
   const MAX_RECOGNITION_RESTARTS = 4
 
+  function logLine(text) {
+    return `<div class="comp-log">🪵 ${text}</div>`
+  }
+
   function debugFailure(reason) {
     updateCompanionState('speaking')
-    updateCompanionBubble('No detecté la palabra ayuda, dila y te ayudo')
+    const langUsed = recognition && recognition.lang ? recognition.lang : '(sin definir, usa OS)'
+    updateCompanionBubble(
+      `<div class="comp-heard">🔧 Diagnóstico</div>${reason}` +
+      logLine(`mic iniciado: ${recognitionStartedThisSession} · resultado: ${receivedSpeechResult} · intentos: ${recognitionRestartCount}`) +
+      logLine(`idioma nav: ${navigator.language} · lang rec: ${langUsed}`) +
+      logLine(`browser: ${isIOSSafari ? 'Safari iOS' : isIOS ? 'Chrome/otro iOS' : 'Desktop'} · continuous: ${recognition ? recognition.continuous : '?'}`)
+    )
   }
 
   // While the user is still holding the talk button, a session that ends
