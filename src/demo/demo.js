@@ -1468,7 +1468,7 @@
     document.querySelectorAll('.nav-schedule').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault()
-        window.open('https://calendly.com/', '_blank')
+        window.open('https://calendly.com/datactar/30min', '_blank')
       })
     })
 
@@ -1477,7 +1477,7 @@
     if (scheduleMeetingBtn) {
       scheduleMeetingBtn.addEventListener('click', (e) => {
         e.preventDefault()
-        window.open('https://calendly.com/', '_blank')
+        window.open('https://calendly.com/datactar/30min', '_blank')
       })
     }
 
