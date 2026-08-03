@@ -532,6 +532,17 @@
      AUDIO RECORDING AND REAL SPEECH RECOGNITION
   ───────────────────────────────────────────────── */
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  // Every browser on iOS (Safari, Chrome, etc.) is required by Apple to run
+  // on WebKit's engine, including its SpeechRecognition implementation —
+  // and that implementation has a real, unfixable-from-JS bug where a
+  // continuous-mode session's abort()/stop() doesn't release the
+  // microphone hardware, leaving the recording indicator lit forever. No
+  // amount of cleanup on our side changes that, so real recognition is
+  // skipped entirely on iOS in favor of the simulated/guided flow below,
+  // which drives the mic via a plain getUserMedia + MediaRecorder stream
+  // we can reliably stop ourselves.
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   let recognition = null
   let receivedSpeechResult = false
   let accumulatedTranscript = ''
@@ -744,20 +755,21 @@
       return;
     }
 
-    const canUseRealRecognition = SpeechRecognition && !speechServiceUnavailable
+    const canUseRealRecognition = SpeechRecognition && !speechServiceUnavailable && !isIOS
 
     if (!canUseRealRecognition) {
-      // Either this browser doesn't expose the Web Speech API at all
-      // (common on iOS Safari, unlike Chrome/iOS which is also
-      // WebKit-based but does support it in recent versions), or we
-      // already learned this session that the speech service refuses to
-      // engage. We can still capture audio via MediaRecorder below, but
-      // there is no real transcription available in that path — say so up
-      // front instead of showing "Escuchando..." as if voice recognition
-      // were about to kick in.
-      const reason = SpeechRecognition
-        ? 'el servicio de reconocimiento de voz de este navegador no está disponible'
-        : 'SpeechRecognition no disponible en este navegador'
+      // Either this is iOS (see isIOS above for why real recognition is
+      // never used there), this browser doesn't expose the Web Speech API
+      // at all, or we already learned this session that the speech service
+      // refuses to engage. We can still capture audio via MediaRecorder
+      // below, but there is no real transcription available in that path —
+      // say so up front instead of showing "Escuchando..." as if voice
+      // recognition were about to kick in.
+      const reason = isIOS
+        ? 'reconocimiento de voz real no disponible en iOS'
+        : SpeechRecognition
+          ? 'el servicio de reconocimiento de voz de este navegador no está disponible'
+          : 'SpeechRecognition no disponible en este navegador'
       updateCompanionBubble('🎙️ Escuchando (modo simulado)' + logLine(reason))
     } else {
       updateCompanionBubble('Escuchando...')
