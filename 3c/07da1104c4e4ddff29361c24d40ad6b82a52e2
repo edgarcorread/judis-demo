@@ -1,0 +1,35 @@
+src/demo/demo.js
+  s_a18ff054ddb7c9::t_4d6e8ce2956a7b 537-541
+  s_a18ff054ddb7c9::t_67f04a06d2ed84 784
+  s_a18ff054ddb7c9::t_bb105b39451b90 820-823,840
+  s_a18ff054ddb7c9::t_98171daee475c2 698
+  s_a18ff054ddb7c9::t_1a820cabe55486 604-608
+  s_a18ff054ddb7c9::t_bd7f760204a8dc 826-835
+  s_a18ff054ddb7c9::t_36f3f111b5130c 916
+  s_a18ff054ddb7c9::t_2afb8e604915ad 669-671
+  s_a18ff054ddb7c9::t_77062c06a4bb23 672
+  s_a18ff054ddb7c9::t_1bbdd65ca287d7 725-727
+  s_a18ff054ddb7c9::t_8efeccc3f94559 783
+  s_a18ff054ddb7c9::t_7dca4199ded719 692-694
+  s_a18ff054ddb7c9::t_3a3c51eabf1761 660,728,809,814,838,849,853,914
+  s_a18ff054ddb7c9::t_0cde21c8d904d4 910-913,915
+  s_a18ff054ddb7c9::t_91a2a031b99d0c 743
+  s_a18ff054ddb7c9::t_d050b7d32aa7c8 587
+  s_a18ff054ddb7c9::t_37081065c8486c 748-751
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "3c07da1104c4e4ddff29361c24d40ad6b82a52e2",
+  "prompts": {},
+  "sessions": {
+    "s_a18ff054ddb7c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b41bdd1-0d90-4253-8ab6-85ae69400c36",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "edgarcorread <edgarcorread@gmail.com>"
+    }
+  }
+}
