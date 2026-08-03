@@ -534,14 +534,11 @@
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  // Chrome/Firefox/Edge on iOS are still required to render via WebKit, but
-  // they ship their own SpeechRecognition plumbing rather than Safari's —
-  // in practice only Safari itself on iOS shows the continuous-mode
-  // abort()/stop() bug where the mic hardware never actually releases,
-  // leaving the recording indicator lit forever. Only Safari falls back to
-  // the simulated/guided flow below (plain getUserMedia + MediaRecorder,
-  // which we can reliably stop ourselves); Chrome iOS keeps real
-  // recognition since it isn't affected.
+  // Chrome/Firefox/Edge on iOS still render via WebKit but ship their own
+  // SpeechRecognition plumbing rather than Safari's — only Safari itself
+  // shows the bug where a continuous-mode session's mic never actually
+  // releases on stop()/abort(). Scope the workaround below to Safari only
+  // so Chrome iOS keeps behaving exactly as it already does.
   const isIOSSafari = isIOS && !/CriOS|FxiOS|EdgiOS|OPiOS|OPT\//.test(navigator.userAgent)
   let recognition = null
   let receivedSpeechResult = false
@@ -580,37 +577,14 @@
   }
 
   function beginRecognitionSession() {
-    // The button may have already been released (or iOS interrupted the
-    // touch with a cancel while the permission dialog was up) by the time
-    // this runs — starting a session now would open a mic nothing will
-    // ever stop, which is what left the mic indicator lit forever on iOS
-    // Safari after release.
     if (!isHotkeyActive) return
-
-    // A previous session may still be lingering here — most commonly the
-    // auto-restart path (see canAutoRestart/onend below) replacing a
-    // session whose onstart/onend never fired, a known iOS Safari
-    // SpeechRecognition flakiness. Left alone, that orphaned instance keeps
-    // holding the microphone forever since nothing else references it once
-    // `recognition` is reassigned below. Detach its handlers (so its own
-    // abort doesn't trigger onerror/onend logic meant for the *new*
-    // session) and abort it before moving on.
-    if (recognition) {
-      recognition.onstart = null
-      recognition.onresult = null
-      recognition.onerror = null
-      recognition.onend = null
-      try { recognition.abort() } catch (e) {}
-    }
-
     recognition = createRecognition()
     try {
       recognition.start()
     } catch (e) {
       console.warn('SpeechRecognition failed to start:', e)
       isHotkeyActive = false
-      updateCompanionState('speaking')
-      updateCompanionBubble('No pude activar el micrófono, intenta de nuevo 🎙️')
+      hideSpeechBubble()
     }
   }
 
@@ -627,7 +601,11 @@
     // producing zero transcript) whenever they took more than a couple
     // seconds to speak. We finalize manually via recognition.stop() on
     // release; see stopAndProcessRecording.
-    rec.continuous = true
+    // On iOS Safari specifically, continuous mode is also what leaves the
+    // mic indicator lit forever — stop()/abort() don't reliably tear down a
+    // continuous session there. Single-utterance mode lets Safari's own
+    // engine close the mic on its own once it detects the end of speech.
+    rec.continuous = !isIOSSafari
     rec.interimResults = false
     // 'es-419' (generic Latin America) isn't a real locale Apple's on-device
     // dictation engine recognizes, so iOS Safari/Chrome silently returns no
@@ -663,10 +641,6 @@
         recordingAbortedByFailsafe = false
         return
       }
-      if (recordingEndedOnRelease) {
-        recordingEndedOnRelease = false
-        return
-      }
       const isPermissionError = event.error === 'not-allowed'
       const isServiceUnavailable = event.error === 'service-not-allowed'
       if (isPermissionError || isServiceUnavailable) recognitionFatalError = true
@@ -683,7 +657,7 @@
           clearTimeout(thinkingTimeout)
           thinkingTimeout = null
         }
-        reportRecordingFailure('el servicio de voz de este navegador no está disponible')
+        simulateTranscriptionResponse('el servicio de voz de este navegador no está disponible')
         return
       }
 
@@ -692,13 +666,10 @@
       // the user will never actually need to act on.
       if (!isPermissionError && canAutoRestart()) return
 
-      const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
-      updateCompanionState('speaking')
-      if (isPermissionError) {
-        updateCompanionBubble('Por favor, permite el acceso al micrófono en la barra de tu navegador para poder hablarme.' + logLine(`error: ${event.error} · mic iniciado: ${recognitionStartedThisSession}`))
-      } else {
-        updateCompanionBubble(`No te escuché nada, intenta de nuevo 🎙️` + logLine(`error: ${event.error} · duración: ${elapsed}s · intentos: ${recognitionRestartCount} · mic iniciado: ${recognitionStartedThisSession}`))
-      }
+      // Stay silent on screen for anything that isn't an actual recognized
+      // command — only processSpokenCommand's "ayuda" flow should surface a
+      // bubble. Reset back to idle so the button is ready for another try.
+      hideSpeechBubble()
     }
 
     rec.onend = () => {
@@ -718,16 +689,13 @@
         return
       }
 
-      // If we stopped but didn't receive any speech transcription
+      // If we stopped but didn't receive any speech transcription, stay
+      // silent — only a recognized command should surface anything on
+      // screen — and just reset back to idle for the next attempt.
       setTimeout(() => {
         if (companionState === 'listening' || companionState === 'thinking') {
           if (!receivedSpeechResult) {
-            const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
-            updateCompanionState('speaking')
-            updateCompanionBubble(
-              '<div class="comp-heard">⚠️ No detecté ninguna palabra</div>Intenta de nuevo, hablando un poco más fuerte 🎙️' +
-              logLine(`sin error nativo · duración: ${elapsed}s · intentos: ${recognitionRestartCount} · mic iniciado: ${recognitionStartedThisSession}`)
-            )
+            hideSpeechBubble()
           }
         }
       }, 1800)
@@ -751,29 +719,13 @@
     const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
     if (!isSecure) {
-      updateCompanionBubble('🎙️ Escuchando... (Simulado por conexión local HTTP)');
       return;
     }
 
-    const canUseRealRecognition = SpeechRecognition && !speechServiceUnavailable && !isIOSSafari
-
-    if (!canUseRealRecognition) {
-      // Either this is iOS Safari specifically (see isIOSSafari above for
-      // why real recognition is never used there), this browser doesn't
-      // expose the Web Speech API at all, or we already learned this
-      // session that the speech service refuses to engage. We can still
-      // capture audio via MediaRecorder below, but there is no real
-      // transcription available in that path — say so up front instead of
-      // showing "Escuchando..." as if voice recognition were about to kick in.
-      const reason = isIOSSafari
-        ? 'reconocimiento de voz real no disponible en Safari iOS'
-        : SpeechRecognition
-          ? 'el servicio de reconocimiento de voz de este navegador no está disponible'
-          : 'SpeechRecognition no disponible en este navegador'
-      updateCompanionBubble('🎙️ Escuchando (modo simulado)' + logLine(reason))
-    } else {
-      updateCompanionBubble('Escuchando...')
-    }
+    // Nothing is shown on screen while listening — only a recognized
+    // command (see processSpokenCommand) surfaces a bubble. The 'listening'
+    // companion state above already gives visual feedback (pulsing mic).
+    const canUseRealRecognition = SpeechRecognition && !speechServiceUnavailable
 
     if (canUseRealRecognition) {
       // iOS Safari sometimes never shows the mic permission dialog when
@@ -788,19 +740,15 @@
         } catch (err) {
           console.warn('Mic permission priming failed:', err)
           isHotkeyActive = false
-          updateCompanionState('speaking')
-          updateCompanionBubble(
-            'No pude acceder al micrófono. Revisa los permisos del sitio en Ajustes > Safari.' +
-            logLine(`getUserMedia error: ${err && err.name ? err.name : err}`)
-          )
+          hideSpeechBubble()
           return
         }
       }
 
-      // On iOS the native permission dialog interrupts the in-progress touch
-      // (fires touchcancel), which already stopped the recording via
-      // stopAndProcessRecording before the user even answered the prompt.
-      // Don't start a session for a button that's no longer held.
+      // The permission dialog can interrupt/cancel the in-progress touch on
+      // iOS before the user answers it, which already stopped the recording
+      // via stopAndProcessRecording. Don't start a session for a button
+      // that's no longer held once that await resolves.
       if (!isHotkeyActive) return
 
       // Once permission has been granted at least once, leave a short gap
@@ -832,17 +780,14 @@
         mediaRecorder.start(100)
       } catch (err) {
         console.warn('Microphone access not allowed or unavailable. Simulating audio capture.', err)
-        updateCompanionBubble(
-          '🎙️ No pude acceder al micrófono' +
-          logLine(`getUserMedia error: ${err && err.name ? err.name : err}`)
-        )
+        isHotkeyActive = false
+        hideSpeechBubble()
       }
     }
   }
 
   let thinkingTimeout = null
   let recordingAbortedByFailsafe = false
-  let recordingEndedOnRelease = false
 
   function stopAndProcessRecording() {
     if (!isHotkeyActive) return
@@ -861,32 +806,38 @@
           recordingAbortedByFailsafe = true
           try { recognition.abort() } catch (e) {}
         }
-        reportRecordingFailure('se abortó la grabación, tardó demasiado en responder')
+        simulateTranscriptionResponse('se abortó la grabación, tardó demasiado en responder')
       }
     }, 4500)
 
     if (!isSecure) {
-      setTimeout(reportRecordingFailure, 1000)
+      setTimeout(simulateTranscriptionResponse, 1000)
       return;
     }
 
     if (recognition) {
       const isMobile = window.innerWidth <= 600
+      // On iOS Safari we don't wait for the usual trailing-word buffer —
+      // abort() there needs to fire as close to release as possible, since
+      // any delay reads as the mic "not letting go" of the button.
+      const releaseDelay = isIOSSafari ? 150 : (isMobile ? 1000 : 400)
       setTimeout(() => {
         try {
-          // abort() (not stop()) — on iOS Safari, stop() was leaving the
-          // mic indicator lit indefinitely after release even once
-          // recognition had nothing left to say. abort() releases the
-          // microphone immediately; any speech already transcribed via
-          // onresult up to this point is preserved in accumulatedTranscript
-          // regardless, so this doesn't lose an already-captured command.
-          recordingEndedOnRelease = true
-          recognition.abort()
+          // abort() releases the mic immediately instead of waiting for a
+          // final result like stop() does — on iOS Safari that wait is what
+          // left the mic indicator lit after release. Any speech already
+          // transcribed via onresult up to this point is preserved in
+          // accumulatedTranscript regardless, so this doesn't lose it.
+          if (isIOSSafari) {
+            recognition.abort()
+          } else {
+            recognition.stop()
+          }
         } catch (e) {
           console.warn('SpeechRecognition stop failed', e)
-          reportRecordingFailure('no se pudo detener la grabación correctamente')
+          simulateTranscriptionResponse('no se pudo detener la grabación correctamente')
         }
-      }, isMobile ? 1000 : 400)
+      }, releaseDelay)
     } else {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.onstop = () => {
@@ -895,11 +846,11 @@
             micStream = null
           }
           mediaRecorder = null
-          reportRecordingFailure()
+          simulateTranscriptionResponse()
         }
         mediaRecorder.stop()
       } else {
-        setTimeout(reportRecordingFailure, 1000)
+        setTimeout(simulateTranscriptionResponse, 1000)
       }
     }
   }
@@ -956,18 +907,13 @@
     }
   }
 
-  // Reports that a recording attempt failed to capture/process real speech.
-  // Deliberately does NOT advance the guide or pretend anything was
-  // understood — only a real transcribed "ayuda" (see processSpokenCommand)
-  // is allowed to trigger the guided flow.
-  function reportRecordingFailure(errorReason) {
-    updateCompanionState('speaking')
-    const elapsed = ((Date.now() - recordingStartTime) / 1000).toFixed(1)
-    const detail = errorReason ? `No pude grabarte: ${errorReason}` : 'No te escuché'
-    updateCompanionBubble(
-      `<div class="comp-heard">⚠️ ${detail}</div>Intenta de nuevo y decime <strong>"ayuda"</strong> 🎙️` +
-      logLine(`duración: ${elapsed}s · intentos: ${recognitionRestartCount} · mic iniciado: ${recognitionStartedThisSession}`)
-    )
+  // Called whenever a recording attempt fails to capture/process real
+  // speech. Deliberately stays silent on screen and does NOT advance the
+  // guide — only a real transcribed "ayuda" (see processSpokenCommand) is
+  // allowed to trigger the guided flow, so this just resets for a retry.
+  function simulateTranscriptionResponse(errorReason) {
+    if (errorReason) console.warn('[J.U.D.I.S Speech] recording failed:', errorReason)
+    hideSpeechBubble()
   }
 
   function highlightScheduleButton() {
