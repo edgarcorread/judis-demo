@@ -583,6 +583,15 @@
       logLine(`idioma nav: ${navigator.language} · lang rec: ${langUsed}`) +
       logLine(`browser: ${isIOSSafari ? 'Safari iOS' : isIOS ? 'Chrome/otro iOS' : 'Desktop'} · continuous: ${recognition ? recognition.continuous : '?'}`)
     )
+    // The mobile CSS clamps .comp-answer to 6 lines for normal AI answers —
+    // this diagnostic block has more lines than that budget and needs to
+    // stay fully visible while debugging the iOS Safari SpeechRecognition
+    // issue, so lift the clamp just for this bubble.
+    const answerEl = companionEl ? companionEl.querySelector('.comp-answer') : null
+    if (answerEl) {
+      answerEl.style.setProperty('-webkit-line-clamp', 'unset', 'important')
+      answerEl.style.setProperty('overflow', 'visible', 'important')
+    }
   }
 
   // While the user is still holding the talk button, a session that ends
