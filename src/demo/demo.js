@@ -578,6 +578,23 @@
 
   function beginRecognitionSession() {
     if (!isHotkeyActive) return
+
+    // A previous session can still be lingering here whenever the
+    // auto-restart path below replaces `recognition` with a fresh one
+    // (common on iOS Safari, where a session's onstart/onend can silently
+    // never fire). Left alone, that orphaned instance keeps holding the
+    // microphone forever since nothing else references it once
+    // `recognition` is reassigned. Detach its handlers (so its own abort
+    // doesn't trigger onerror/onend logic meant for the *new* session) and
+    // abort it before moving on.
+    if (recognition) {
+      recognition.onstart = null
+      recognition.onresult = null
+      recognition.onerror = null
+      recognition.onend = null
+      try { recognition.abort() } catch (e) {}
+    }
+
     recognition = createRecognition()
     try {
       recognition.start()
@@ -737,6 +754,11 @@
         try {
           const primerStream = await navigator.mediaDevices.getUserMedia({ audio: true })
           primerStream.getTracks().forEach(t => t.stop())
+          // Set this from the priming grant itself rather than waiting on
+          // rec.onstart below — that event can silently never fire on iOS
+          // Safari, which otherwise left every single press re-priming
+          // (and re-engaging) the microphone instead of just the first one.
+          micPermissionGranted = true
         } catch (err) {
           console.warn('Mic permission priming failed:', err)
           isHotkeyActive = false
