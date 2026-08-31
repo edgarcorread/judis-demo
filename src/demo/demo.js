@@ -254,8 +254,9 @@
     if (found2.has(product.id)) return
 
     card.classList.add('found-item')
-    // Remove hotspot overlays
+    // Remove hotspot overlays from this specific clicked card
     card.querySelectorAll('.hotspot-ring, .hotspot-ring-2, .hotspot-label, .hotspot-arrow').forEach(el => el.remove())
+    card.style.zIndex = ''
     found2.add(product.id)
 
     const targetDetails = TARGETS.find(t => t.id === product.id)
@@ -263,10 +264,12 @@
     if (badge) badge.classList.add('found')
 
     document.getElementById('found-2').textContent = found2.size
-    guideStep++
+    guideStep = found2.size
 
     if (found2.size < 3) {
-      setTimeout(() => triggerSequentialGuide(), 600)
+      const remaining = 3 - found2.size
+      updateCompanionState('speaking')
+      updateCompanionBubble(`¡Excelente! Encontraste <strong>${targetDetails.name}</strong>. Te ${remaining === 1 ? 'queda 1 producto señalado' : 'quedan ' + remaining + ' productos señalados'}.`)
     } else {
       stopChrono(2)
       saveAnalytics({
@@ -395,6 +398,23 @@
     companionEl.classList.toggle('side-right', isRightSide)
   }
 
+  // The greeting is triggered from two places (the wallet card's "Sí,
+  // habilitar" button and the nav pill), so it lives in one function with a
+  // guard: whichever fires first does the greeting, the other one is a no-op.
+  // Reset by disableJudisCompanion so turning J.U.D.I.S off and on again
+  // greets properly.
+  let hasGreeted = false
+
+  function speakWelcome() {
+    if (hasGreeted) return
+    hasGreeted = true
+    const welcomeMsg = window.innerWidth <= 600
+      ? '¡Hola! Soy J.U.D.I.S, tu acompañante online. Mantén presionado el rombo para hablarme.'
+      : '¡Hola! Soy J.U.D.I.S, tu acompañante online. Mantén presionadas las teclas <strong>J + U</strong> en tu teclado para hablarme.'
+    updateCompanionBubble(welcomeMsg)
+    updateCompanionState('speaking')
+  }
+
   function enableJudisCompanion() {
     isJudisEnabled = true
     if (companionEl) {
@@ -407,6 +427,7 @@
 
   function disableJudisCompanion() {
     isJudisEnabled = false
+    hasGreeted = false
     if (companionEl) {
       companionEl.classList.add('off')
       companionEl.classList.remove('following')
@@ -448,13 +469,392 @@
     }
   }
 
+  /* ─────────────────────────────────────────────────
+     GOOGLE TEXT-TO-SPEECH (TTS) INTEGRATION
+  ───────────────────────────────────────────────── */
+  let audioCtx = null
+  let currentSourceNode = null
+  let currentTTSAudio = null
+  let speakToken = 0
+  let lastSpokenRaw = ''
+  let lastSpokenAt = 0
+
+  // Voices J.U.D.I.S speaks with, best-sounding first — every one of them
+  // female. Chirp3-HD is Google's most natural family (conversational
+  // intonation instead of the flatter "read-aloud" cadence of Neural2), so
+  // it's what we ask for; Neural2 stays behind it as the safety net for keys
+  // or regions where the HD voices aren't enabled, and the browser voice
+  // behind that. Sulafat is the warm one; Leda (brighter) and Aoede
+  // (breezier) are the other good female options if you want a different feel.
+  const TTS_VOICE_CHAIN = [
+    { name: 'es-US-Chirp3-HD-Sulafat', languageCode: 'es-US', rate: 1.0, supportsPitch: false },
+    { name: 'es-US-Neural2-A', languageCode: 'es-US', rate: 1.0, supportsPitch: true }
+  ]
+  // When the mic was last released. Used to give iOS a beat to switch its
+  // audio session back to playback before we start speaking — see
+  // markMicReleased() below.
+  let micReleasedAt = 0
+
+  // Why this exists: on iOS (and to a lesser degree Android), using the
+  // microphone switches the whole audio session into "play and record"
+  // mode — telephony-grade, mono, heavily processed, routed out the
+  // earpiece. Anything played back through an AudioContext that was
+  // created (or kept alive) during that mode keeps sounding thin and
+  // metallic: exactly the "suena a robot" the welcome message doesn't have,
+  // because that one plays before the mic has ever been touched.
+  //
+  // Tearing the context down once the mic hardware is released means the
+  // next speakText() builds a brand-new one, which the OS opens in plain
+  // playback mode again — so every answer sounds like the first one.
+  function resetAudioContext() {
+    if (currentSourceNode) {
+      try { currentSourceNode.stop() } catch (e) {}
+      currentSourceNode = null
+    }
+    if (audioCtx) {
+      const old = audioCtx
+      audioCtx = null
+      try { old.close() } catch (e) {}
+    }
+  }
+
+  // Call whenever a recording session has finished with the microphone,
+  // no matter which path released it (explicit stream, recognizer teardown,
+  // failsafe, drag-cancel).
+  function markMicReleased() {
+    micReleasedAt = Date.now()
+    resetAudioContext()
+  }
+
+  function getAudioContext() {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass()
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {})
+    }
+    return audioCtx
+  }
+
+  function initAudioUnlock() {
+    const unlock = () => {
+      getAudioContext()
+      if (!currentTTSAudio) {
+        currentTTSAudio = new Audio()
+      }
+      currentTTSAudio.play().then(() => {
+        currentTTSAudio.pause()
+        currentTTSAudio.currentTime = 0
+      }).catch(() => {})
+    }
+    document.addEventListener('click', unlock, { passive: true })
+    document.addEventListener('touchstart', unlock, { passive: true })
+    document.addEventListener('touchend', unlock, { passive: true })
+    document.addEventListener('keydown', unlock, { passive: true })
+  }
+  initAudioUnlock()
+
+  // iOS doesn't flip the audio session back to playback the instant the mic
+  // tracks stop — starting playback inside that window still gets the
+  // degraded "call quality" route. A short wait after the last mic release
+  // is enough, and in practice the Google TTS request has usually already
+  // eaten it.
+  function waitForPlaybackRoute() {
+    const elapsed = Date.now() - micReleasedAt
+    const remaining = 350 - elapsed
+    if (!micReleasedAt || remaining <= 0) return Promise.resolve()
+    return new Promise(resolve => setTimeout(resolve, remaining))
+  }
+
+  function stopTTSAudio() {
+    // Invalidate anything still waiting on the network, so an answer the user
+    // already dismissed (or interrupted by talking again) never starts playing.
+    speakToken++
+    if (currentSourceNode) {
+      try { currentSourceNode.stop() } catch (e) {}
+      currentSourceNode = null
+    }
+    if (currentTTSAudio) {
+      currentTTSAudio.pause()
+      currentTTSAudio.currentTime = 0
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+    }
+  }
+
+  async function speakText(rawText) {
+    if (!rawText) return
+
+    // Two code paths can surface the same message for a single user action
+    // (enabling J.U.D.I.S from the wallet card and from the nav pill both
+    // greet), which came out as the welcome being spoken twice in a row.
+    // Ignore an identical message landing right on top of the previous one —
+    // and do it before stopTTSAudio() below, so the duplicate doesn't cut off
+    // the copy that's already playing.
+    const now = Date.now()
+    if (rawText === lastSpokenRaw && now - lastSpokenAt < 3000) {
+      console.warn('[TTS] Mensaje duplicado ignorado (ya se está diciendo).')
+      return
+    }
+    lastSpokenRaw = rawText
+    lastSpokenAt = now
+
+    stopTTSAudio()
+    // Every speakText call invalidates the one before it: the Google request
+    // is async, so without this a slow response could start playing on top of
+    // a newer message (two voices at once reads as "robot" too).
+    const myToken = ++speakToken
+
+    // Clean plain text: remove HTML tags, logs, heard prefixes, emojis
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = rawText
+    tempDiv.querySelectorAll('.comp-log, .comp-heard').forEach(el => el.remove())
+    let plainText = tempDiv.textContent || tempDiv.innerText || ''
+    plainText = plainText.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/\s+/g, ' ').trim()
+
+    // Phonetic replacement: pronounce J.U.D.I.S / judis as "Yudis" seamlessly in audio
+    plainText = plainText.replace(/j\.?\s*u\.?\s*d\.?\s*i\.?\s*s\.?/gi, 'Yudis')
+
+    if (!plainText) return
+
+    const apiKey = (typeof __GOOGLE_TTS_KEY__ !== 'undefined' ? __GOOGLE_TTS_KEY__ : '') ||
+      (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_GOOGLE_TTS_API_KEY || import.meta.env.VITE_GOOGLE_TTS || import.meta.env.GOOGLE_TTS || '') : '')
+
+    updateCompanionState('speaking')
+
+    if (!apiKey || apiKey === 'AIzaSy...' || apiKey.trim() === '') {
+      console.warn('[Google TTS] No se detectó GOOGLE_TTS en .env. Usando voz sintética del navegador.')
+      fallbackWebSpeech(plainText)
+      return
+    }
+
+    // Try each voice in turn. A single failed request used to leave the
+    // answer completely silent (the error path fell through without playing
+    // anything), and any transient hiccup — network blip, 429, 5xx, or a key
+    // without access to the HD voices — hit only the answers that come after
+    // the welcome message.
+    let audioContent = null
+    let usedVoice = null
+    for (const voice of TTS_VOICE_CHAIN) {
+      audioContent = await requestGoogleTTS(apiKey.trim(), plainText, voice)
+      if (audioContent) {
+        usedVoice = voice
+        break
+      }
+      await new Promise(resolve => setTimeout(resolve, 250))
+    }
+
+    // A newer message started speaking while we were waiting on the network —
+    // drop this one instead of talking over it.
+    if (myToken !== speakToken) return
+
+    if (audioContent) {
+      console.log(`[Google TTS] Reproduciendo voz ${usedVoice.name}:`, plainText)
+      await playGoogleAudio(audioContent, myToken)
+      return
+    }
+
+    console.warn('[Google TTS] Google no devolvió audio con ninguna voz — usando voz del navegador.')
+    fallbackWebSpeech(plainText)
+  }
+
+  async function requestGoogleTTS(apiKey, plainText, voice) {
+    try {
+      const audioConfig = {
+        audioEncoding: 'MP3',
+        speakingRate: voice.rate
+      }
+      // Chirp3-HD rejects `pitch` outright (400) — it's only accepted by the
+      // Standard/WaveNet/Neural2 families.
+      if (voice.supportsPitch) audioConfig.pitch = 0.0
+
+      const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          input: { text: plainText },
+          voice: {
+            languageCode: voice.languageCode,
+            name: voice.name,
+            ssmlGender: 'FEMALE'
+          },
+          audioConfig
+        })
+      })
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        console.warn(`[Google TTS] Google rechazó la voz ${voice.name}:`, errData)
+        return null
+      }
+
+      const data = await response.json()
+      return data.audioContent || null
+    } catch (err) {
+      console.warn(`[Google TTS] Error de conexión pidiendo ${voice.name}:`, err)
+      return null
+    }
+  }
+
+  async function playGoogleAudio(audioContent, myToken) {
+    // Web Audio API approach (unlocked by touch/click, bypasses mobile asynchronous audio.play() restrictions)
+    try {
+      await waitForPlaybackRoute()
+      if (myToken !== speakToken) return
+      const ctx = getAudioContext()
+      if (ctx) {
+        if (ctx.state === 'suspended') {
+          await ctx.resume().catch(() => {})
+        }
+        const binaryString = atob(audioContent)
+        const len = binaryString.length
+        const bytes = new Uint8Array(len)
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        const audioBuffer = await ctx.decodeAudioData(bytes.buffer)
+        if (myToken !== speakToken) return
+        if (currentSourceNode) {
+          try { currentSourceNode.stop() } catch (e) {}
+          currentSourceNode = null
+        }
+        const source = ctx.createBufferSource()
+        source.buffer = audioBuffer
+        source.connect(ctx.destination)
+        currentSourceNode = source
+        source.onended = () => {
+          currentSourceNode = null
+          updateCompanionState('idle')
+        }
+        source.start(0)
+        return
+      }
+    } catch (webAudioErr) {
+      console.warn('[Google TTS] Web Audio play failed, falling back to HTMLAudio:', webAudioErr)
+    }
+
+    // HTML5 Audio fallback
+    await waitForPlaybackRoute()
+    if (myToken !== speakToken) return
+    if (!currentTTSAudio) {
+      currentTTSAudio = new Audio()
+    }
+    currentTTSAudio.src = `data:audio/mp3;base64,${audioContent}`
+    currentTTSAudio.onended = () => {
+      updateCompanionState('idle')
+    }
+    await currentTTSAudio.play().catch(err => {
+      console.warn('[Google TTS] HTMLAudio play error:', err)
+    })
+  }
+
+  // J.U.D.I.S always speaks with a female voice. The Web Speech API doesn't
+  // expose a voice's gender, so the only way to keep the fallback consistent
+  // with the Google one is by name: the OS default for Spanish is often male
+  // (Jorge, Juan, Diego, Pablo…), which is exactly what shows up whenever
+  // Google TTS isn't available.
+  const FEMALE_ES_VOICES = [
+    'paulina', 'mónica', 'monica', 'marisol', 'angelica', 'angélica', 'isabela',
+    'sabina', 'dalia', 'helena', 'laura', 'elvira', 'esperanza', 'ximena',
+    'lupe', 'penélope', 'penelope', 'conchita', 'lucia', 'lucía', 'mia', 'camila'
+  ]
+  const MALE_ES_VOICES = [
+    'jorge', 'juan', 'diego', 'pablo', 'raul', 'raúl', 'alvaro', 'álvaro',
+    'carlos', 'enrique', 'miguel', 'liberto', 'javier', 'andres', 'andrés',
+    'gonzalo', 'sergio', 'tomas', 'tomás', 'rocko', 'grandpa', 'eddy', 'reed'
+  ]
+
+  function isMaleVoice(voice) {
+    const name = (voice.name || '').toLowerCase()
+    return MALE_ES_VOICES.some(n => name.includes(n))
+  }
+
+  // Picks the least synthetic *female* Spanish voice the browser exposes.
+  // getVoices() is empty until the list has loaded (Chrome/Safari populate it
+  // asynchronously), and an empty list means the utterance falls back to the
+  // OS default — usually an English robot reading Spanish. Wait for
+  // 'voiceschanged' once instead of speaking into that gap.
+  function getSpanishVoice() {
+    const voices = window.speechSynthesis.getVoices() || []
+    if (!voices.length) return null
+    const es = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('es'))
+    if (!es.length) return null
+
+    const female = es.filter(v => FEMALE_ES_VOICES.some(n => (v.name || '').toLowerCase().includes(n)))
+    // Chrome's "Google español" voices are female but carry no personal name,
+    // so they only qualify through this second, gender-neutral-name pass.
+    const notMale = es.filter(v => !isMaleVoice(v))
+    const candidates = female.length ? female : (notMale.length ? notMale : es)
+
+    // Preference order within the candidates, best-sounding first: the
+    // neural/cloud voices, then Apple's premium/enhanced ones.
+    const preferred = ['Natural', 'Neural', 'Google', 'Premium', 'Enhanced', 'Paulina', 'Mónica', 'Monica', 'Marisol']
+    for (const name of preferred) {
+      const match = candidates.find(v => (v.name || '').toLowerCase().includes(name.toLowerCase()))
+      if (match) return match
+    }
+    return candidates.find(v => !/compact|eloquence/i.test(v.name || '')) || candidates[0]
+  }
+
+  function fallbackWebSpeech(text, isRetry) {
+    if (!window.speechSynthesis) {
+      setTimeout(() => updateCompanionState('idle'), 2000)
+      return
+    }
+
+    const voice = getSpanishVoice()
+    if (!voice && !isRetry) {
+      // Voice list not ready yet — speaking now would use the OS default.
+      // Both the event and the timeout race to resume, and exactly one of
+      // them may win: whichever fires first must disarm the other, or the
+      // message gets spoken twice (the Web Speech API queues utterances
+      // rather than replacing them, so it plays start to finish, twice).
+      let resumed = false
+      let timer = null
+      const resume = () => {
+        if (resumed) return
+        resumed = true
+        clearTimeout(timer)
+        window.speechSynthesis.removeEventListener('voiceschanged', resume)
+        fallbackWebSpeech(text, true)
+      }
+      window.speechSynthesis.addEventListener('voiceschanged', resume)
+      timer = setTimeout(resume, 600)
+      return
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = voice && voice.lang ? voice.lang : 'es-US'
+    utterance.rate = 0.98
+    utterance.pitch = 1.0
+    if (voice) {
+      utterance.voice = voice
+      console.warn('[TTS] Voz del navegador en uso (no es la voz neural):', voice.name)
+    }
+
+    utterance.onend = () => updateCompanionState('idle')
+    utterance.onerror = () => updateCompanionState('idle')
+    // Anything still queued or mid-sentence belongs to a previous message —
+    // speak() appends to the queue, so without this the browser reads them
+    // one after the other instead of replacing.
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utterance)
+  }
+
   function hideSpeechBubble() {
     const bubble = companionEl ? companionEl.querySelector('.comp-bubble') : null
     if (bubble) bubble.classList.add('hidden')
+    stopTTSAudio()
     updateCompanionState('idle')
   }
 
-  function updateCompanionBubble(text) {
+  function updateCompanionBubble(text, shouldSpeak = true) {
     if (!companionEl) return
     const bubble = companionEl.querySelector('.comp-bubble')
     const answer = companionEl.querySelector('.comp-answer')
@@ -464,65 +864,84 @@
       if (bubble) bubble.classList.remove('hidden')
       if (answer) answer.innerHTML = text
       if (hint) hint.textContent = 'J + U para hablar'
+      if (shouldSpeak) {
+        speakText(text)
+      }
     } else {
       if (bubble) bubble.classList.add('hidden')
+      stopTTSAudio()
     }
   }
 
   /* ─────────────────────────────────────────────────
-     SEQUENTIAL PRODUCT GUIDANCE (1 -> 2 -> 3)
+     ALL TARGETS GUIDANCE (Highlights all 3 simultaneously)
   ───────────────────────────────────────────────── */
-  function triggerSequentialGuide() {
-    if (guideStep >= 3) return
-    const targetProduct = TARGETS[guideStep]
+  function highlightAllTargets(updateBubble = false) {
     const gridEl = document.getElementById('grid-2')
     if (!gridEl) return
 
     // Clear previous hotspots
     gridEl.querySelectorAll('.hotspot-ring, .hotspot-ring-2, .hotspot-label, .hotspot-arrow').forEach(el => el.remove())
 
-    // Find target product card in grid
     const cards = gridEl.querySelectorAll('.product-card')
-    let matchedCard = null
-    cards.forEach(card => {
-      const pName = card.querySelector('.p-name')
-      if (pName && pName.textContent.trim() === targetProduct.name) {
-        matchedCard = card
+    let firstMatchedCard = null
+
+    TARGETS.forEach(targetProduct => {
+      if (found2.has(targetProduct.id)) return
+
+      let matchedCard = null
+      cards.forEach(card => {
+        const pName = card.querySelector('.p-name')
+        if (pName && pName.textContent.trim() === targetProduct.name) {
+          matchedCard = card
+        }
+      })
+
+      if (matchedCard) {
+        if (!firstMatchedCard) firstMatchedCard = matchedCard
+
+        matchedCard.style.position = 'relative'
+        matchedCard.style.zIndex = '10'
+
+        const ring = document.createElement('div')
+        ring.className = 'hotspot-ring'
+        matchedCard.appendChild(ring)
+
+        const ring2 = document.createElement('div')
+        ring2.className = 'hotspot-ring-2'
+        matchedCard.appendChild(ring2)
+
+        const label = document.createElement('div')
+        label.className = 'hotspot-label'
+        label.textContent = `✦ ${targetProduct.name}`
+        matchedCard.appendChild(label)
+
+        const arrow = document.createElement('div')
+        arrow.className = 'hotspot-arrow'
+        arrow.textContent = '👇'
+        matchedCard.appendChild(arrow)
       }
     })
 
-    if (!matchedCard) return
+    // Smoothly scroll grid into view
+    if (firstMatchedCard) {
+      setTimeout(() => {
+        firstMatchedCard.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 150)
+    }
 
-    // Append visual guidance overlays
-    matchedCard.style.position = 'relative'
-    matchedCard.style.zIndex = '10'
+    // Update J.U.D.I.S text bubble explanation only if requested
+    if (updateBubble) {
+      const remaining = 3 - found2.size
+      if (remaining > 0) {
+        const msg = `Señalé los <strong>${remaining === 3 ? '3 productos' : remaining + ' productos restantes'}</strong> en pantalla. ¡Haz clic en ellos para seleccionarlos!`
+        updateCompanionBubble(msg)
+      }
+    }
+  }
 
-    const ring = document.createElement('div')
-    ring.className = 'hotspot-ring'
-    matchedCard.appendChild(ring)
-
-    const ring2 = document.createElement('div')
-    ring2.className = 'hotspot-ring-2'
-    matchedCard.appendChild(ring2)
-
-    const label = document.createElement('div')
-    label.className = 'hotspot-label'
-    label.textContent = `✦ Encontrar: ${targetProduct.name}`
-    matchedCard.appendChild(label)
-
-    const arrow = document.createElement('div')
-    arrow.className = 'hotspot-arrow'
-    arrow.textContent = '👇'
-    matchedCard.appendChild(arrow)
-
-    // Smoothly scroll matched target into view
-    setTimeout(() => {
-      matchedCard.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 150)
-
-    // Update J.U.D.I.S text bubble explanation
-    const msg = `Señalé el producto en pantalla: <strong>${targetProduct.emoji} ${targetProduct.name}</strong>. Haz clic para avanzar.`
-    updateCompanionBubble(msg)
+  function triggerSequentialGuide() {
+    highlightAllTargets(false)
   }
 
   /* ─────────────────────────────────────────────────
@@ -607,9 +1026,14 @@
   // on a stream we hold a direct reference to is a guaranteed way to
   // release the hardware regardless of what the recognizer does.
   function stopExplicitMicStream() {
-    if (!micStream) return
-    micStream.getTracks().forEach(t => t.stop())
-    micStream = null
+    if (micStream) {
+      micStream.getTracks().forEach(t => t.stop())
+      micStream = null
+    }
+    // Even when we never held an explicit stream (desktop, Chrome iOS), the
+    // recognizer had the mic open — so the audio session still needs to be
+    // handed back to plain playback before J.U.D.I.S answers out loud.
+    markMicReleased()
   }
 
   function beginRecognitionSession() {
@@ -769,6 +1193,7 @@
 
   async function startRecording() {
     if (isHotkeyActive) return
+    stopTTSAudio()
     isHotkeyActive = true
     receivedSpeechResult = false
     accumulatedTranscript = ''
@@ -974,10 +1399,7 @@
     } else {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.onstop = () => {
-          if (micStream) {
-            micStream.getTracks().forEach(t => t.stop())
-            micStream = null
-          }
+          stopExplicitMicStream()
           mediaRecorder = null
           simulateTranscriptionResponse()
         }
@@ -1003,10 +1425,7 @@
       stopExplicitMicStream()
     } else if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       try { mediaRecorder.stop() } catch (e) {}
-      if (micStream) {
-        micStream.getTracks().forEach(t => t.stop())
-        micStream = null
-      }
+      stopExplicitMicStream()
       mediaRecorder = null
     }
     hideSpeechBubble()
@@ -1027,13 +1446,12 @@
     } else if (text.includes('beneficio') || text.includes('ventajas') || text.includes('funcion') || text.includes('funciones') || text.includes('para que sirve') || text.includes('que es esto') || text.includes('que es judis') || text.includes('que eres') || text.includes('que haces') || text.includes('quien eres')) {
       updateCompanionBubble(heard + 'Soy un asistente que te ayuda a finalizar las acciones de usuarios en tu página, tipo guiarte en una compra o solucionar dudas complejas sin fricciones. 🚀')
     } else if (text.includes('ayud') || text.includes('objeto') || text.includes('producto') || text.includes('mostrar') || text.includes('buscar') || text.includes('guiar') || text.includes('iniciar') || text.includes('comenzar') || text.includes('detectar')) {
-      updateCompanionBubble(heard + '¡Perfecto! Te guiaré secuencialmente para encontrar los 3 productos en la pantalla. 🚀')
+      updateCompanionBubble(heard + '¡Perfecto! Te señalo los 3 productos en la pantalla. 🚀')
       setTimeout(() => {
         if (!chrono2.running) {
           startChrono(2)
         }
-        guideStep = 0
-        triggerSequentialGuide()
+        highlightAllTargets()
       }, 1500)
     } else {
       const msg = heard + 'Debes decir <strong>"ayuda"</strong> para que te ayude a encontrar los objetos. 😊'
@@ -1158,11 +1576,7 @@
       if (enableLuziaBtn) enableLuziaBtn.textContent = 'Habilitado'
 
       // Welcome J.U.D.I.S speech
-      const welcomeMsg = window.innerWidth <= 600
-        ? '¡Hola! Soy J.U.D.I.S. Mantén presionada mi foto para hablarme.'
-        : '¡Hola! Soy J.U.D.I.S. Mantén presionadas las teclas <strong>J + U</strong> en tu teclado para hablarme.'
-      updateCompanionBubble(welcomeMsg)
-      updateCompanionState('speaking')
+      speakWelcome()
     }
   }
 
@@ -1225,11 +1639,7 @@
       })
 
       // Inform user how to trigger J.U.D.I.S via bubble
-      const welcomeMsg = window.innerWidth <= 600
-        ? '¡Hola! Soy J.U.D.I.S. Mantén presionada mi foto para hablarme.'
-        : '¡Hola! Soy J.U.D.I.S. Mantén presionadas las teclas <strong>J + U</strong> en tu teclado para hablarme.'
-      updateCompanionBubble(welcomeMsg)
-      updateCompanionState('speaking')
+      speakWelcome()
 
       // Reveal Phase 4 store grid
       const secLuzia = document.getElementById('sec-luzia')
@@ -1349,6 +1759,7 @@
 
       const handlePressStart = (e) => {
         if (!isJudisEnabled) return
+        getAudioContext()
 
         // Prevent back-to-back touch and mouse double-triggers within 300ms
         const now = Date.now()
@@ -1406,6 +1817,7 @@
 
       const handlePressEnd = (e) => {
         if (!isJudisEnabled) return
+        getAudioContext()
         isPressing = false
         if (e.target === compOrbEl) {
           e.preventDefault()

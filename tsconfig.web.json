@@ -1,7 +1,0 @@
-{
-  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
-  "include": ["src/companion/**/*", "src/overlay/**/*", "src/island/**/*"],
-  "compilerOptions": {
-    "composite": true
-  }
-}

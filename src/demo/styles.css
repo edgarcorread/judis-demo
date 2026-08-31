@@ -11,17 +11,17 @@
   --bg-card:      rgba(255,255,255,0.04);
   --border:       rgba(255,255,255,0.09);
   --border-b:     rgba(255,255,255,0.18);
-  --pink:         #0084ff;
-  --pink-glow:    rgba(0,132,255,0.35);
-  --pink-soft:    rgba(0,132,255,0.12);
-  --luzia:        #7c6df9;
-  --luzia-glow:   rgba(124,109,249,0.35);
-  --luzia-soft:   rgba(124,109,249,0.12);
+  --pink:         #7c3aed;
+  --pink-glow:    rgba(124,58,237,0.4);
+  --pink-soft:    rgba(124,58,237,0.15);
+  --luzia:        #8b5cf6;
+  --luzia-glow:   rgba(139,92,246,0.4);
+  --luzia-soft:   rgba(139,92,246,0.15);
   --luzia-2:      #a78bfa;
   --green:        #22d3a5;
   --green-glow:   rgba(34,211,165,0.35);
   --green-soft:   rgba(34,211,165,0.12);
-  --red:          #0084ff;
+  --red:          #7c3aed;
   --yellow:       #fbbf24;
   --txt:          #f0f0ff;
   --txt2:         rgba(240,240,255,0.55);
@@ -60,13 +60,13 @@ body{
 
 .luzia-pill-nav{display:flex;align-items:center;gap:8px;background:var(--pink-soft);border:1px solid var(--pink);border-radius:var(--r-pill);padding:5px 14px;font-size:12px;font-weight:600;color:var(--pink);white-space:nowrap;animation:pillGlow 2s ease infinite;cursor:pointer;transition:all 0.2s ease}
 .luzia-pill-nav:hover{background:var(--pink);color:#fff;box-shadow:0 0 20px var(--pink-glow)}
-@keyframes pillGlow{0%,100%{box-shadow:0 0 12px var(--pink-glow)}50%{box-shadow:0 0 28px var(--pink-glow),0 0 50px rgba(0,132,255,0.15)}}
+@keyframes pillGlow{0%,100%{box-shadow:0 0 12px var(--pink-glow)}50%{box-shadow:0 0 28px var(--pink-glow),0 0 50px rgba(124,58,237,0.15)}}
 .luzia-dot-on{width:8px;height:8px;border-radius:50%;background:var(--pink);box-shadow:0 0 8px var(--pink);animation:blink 1.2s ease infinite}
 .luzia-dot-off{width:8px;height:8px;border-radius:50%;background:#888;box-shadow:0 0 8px #888;animation:none}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
 
 /* ── Challenge Banner ──────────────────────────── */
-.challenge-banner{background:linear-gradient(135deg,rgba(0,132,255,0.06),rgba(34,211,165,0.04));border:1px solid var(--border-b);border-radius:var(--r-xl);padding:10px 20px;margin-bottom:12px;position:relative;overflow:hidden}
+.challenge-banner{background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(34,211,165,0.04));border:1px solid var(--border-b);border-radius:var(--r-xl);padding:10px 20px;margin-bottom:12px;position:relative;overflow:hidden}
 .challenge-banner::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(circle,var(--pink-soft),transparent 70%);pointer-events:none}
 .mini-banner{padding:10px 20px;margin-bottom:12px}
 .challenge-badge{display:inline-block;background:var(--pink-soft);border:1px solid var(--pink);color:var(--pink);font-size:10px;font-weight:700;letter-spacing:.1em;padding:2px 8px;border-radius:var(--r-pill);margin-bottom:4px}
@@ -90,12 +90,12 @@ body{
 .chrono-display.running{animation:cPulse 1s ease infinite alternate}
 @keyframes cPulse{from{text-shadow:0 0 4px rgba(255,255,255,.05)}to{text-shadow:0 0 20px rgba(255,255,255,.25)}}
 .luzia-chrono.running{animation:lcPulse 1s ease infinite alternate}
-@keyframes lcPulse{from{text-shadow:0 0 6px var(--pink-glow)}to{text-shadow:0 0 30px var(--pink-glow),0 0 50px rgba(0,132,255,.15)}}
+@keyframes lcPulse{from{text-shadow:0 0 6px var(--pink-glow)}to{text-shadow:0 0 30px var(--pink-glow),0 0 50px rgba(124,58,237,.15)}}
 
-.chrono-btn{display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--pink),#004bb5);border:none;border-radius:var(--r-md);color:#fff;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;transition:all .2s;box-shadow:0 3px 12px var(--pink-glow);font-family:inherit}
+.chrono-btn{display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--pink),#581c87);border:none;border-radius:var(--r-md);color:#fff;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;transition:all .2s;box-shadow:0 3px 12px var(--pink-glow);font-family:inherit}
 .chrono-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px var(--pink-glow)}
 .chrono-btn:active{transform:translateY(0)}
-.chrono-btn.luzia-btn{background:linear-gradient(135deg,var(--pink),#0055d4)}
+.chrono-btn.luzia-btn{background:linear-gradient(135deg,var(--pink),#6d28d9)}
 .chrono-btn.disabled{opacity:.5;pointer-events:none}
 
 .found-label{margin-top:8px;font-size:11px;color:var(--txt3);font-weight:500}
@@ -115,7 +115,7 @@ body{
 
 /* Hotspots Luzia */
 .hotspot-ring{position:absolute;inset:-6px;border:2px solid var(--pink);border-radius:calc(var(--r-md) + 6px);animation:hRing 1.4s ease infinite;pointer-events:none;z-index:5}
-.hotspot-ring-2{position:absolute;inset:-12px;border:1px solid rgba(0,132,255,.3);border-radius:calc(var(--r-md) + 12px);animation:hRing2 1.4s ease infinite;pointer-events:none;z-index:4}
+.hotspot-ring-2{position:absolute;inset:-12px;border:1px solid rgba(124,58,237,.35);border-radius:calc(var(--r-md) + 12px);animation:hRing2 1.4s ease infinite;pointer-events:none;z-index:4}
 @keyframes hRing{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--pink-glow)}50%{opacity:.7;box-shadow:0 0 12px 4px var(--pink-glow)}}
 @keyframes hRing2{0%,100%{opacity:.5}50%{opacity:.15}}
 .hotspot-label{position:absolute;top:-34px;left:50%;transform:translateX(-50%);background:var(--pink);color:#fff;font-size:10px;font-weight:700;padding:4px 11px;border-radius:var(--r-pill);white-space:nowrap;box-shadow:0 4px 16px var(--pink-glow);pointer-events:none;z-index:20;animation:lBob 2s ease infinite}
@@ -198,28 +198,28 @@ body{
 .comp-top{display:flex;align-items:center;gap:8px;height:28px;flex-shrink:0}
 
 .comp-orb{
-  width:56px;height:56px;border-radius:50%;
-  background:rgba(8,10,18,.85);border:2px solid rgba(255,255,255,.25);
+  width:56px;height:56px;
+  background:transparent;border:none;
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;position:relative;overflow:visible;
   transition:transform .15s;cursor:default;
-  box-shadow:0 4px 20px rgba(0,0,0,.5);
+  filter:drop-shadow(0 4px 16px var(--pink-glow));
   -webkit-touch-callout: none !important;
   -webkit-user-select: none !important;
   user-select: none !important;
 }
-.comp-orb:hover{transform:scale(1.06)}
+.comp-orb:hover{transform:scale(1.08)}
 .comp-avatar{
-  width:100%;height:100%;border-radius:50%;object-fit:cover;background:transparent;
-  transform:scale(1.15);
+  width:100%;height:100%;object-fit:contain;background:transparent;
+  transform:scale(1.05);
   pointer-events: none !important;
   -webkit-touch-callout: none !important;
   -webkit-user-select: none !important;
   user-select: none !important;
 }
 .comp-dot{
-  position:absolute;bottom:0;right:0;
-  width:14px;height:14px;border-radius:50%;
+  position:absolute;bottom:2px;right:2px;
+  width:12px;height:12px;border-radius:50%;
   border:2px solid rgba(8,10,18,.95);
   background:rgba(255,255,255,.45);transition:background .2s;z-index:2;
 }
@@ -231,10 +231,10 @@ body{
 .companion.state-thinking .comp-orb{animation:orbPulseY 1.5s ease-in-out infinite}
 .companion.state-speaking .comp-dot{background:#22c55e}
 
-@keyframes dRed{0%,100%{box-shadow:0 0 0 0 rgba(0,132,255,.5)}50%{box-shadow:0 0 0 6px rgba(0,132,255,0)}}
+@keyframes dRed{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.5)}50%{box-shadow:0 0 0 6px rgba(124,58,237,0)}}
 @keyframes dAmber{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.5)}50%{box-shadow:0 0 0 6px rgba(251,191,36,0)}}
-@keyframes orbPulse{0%{transform:scale(1);filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}50%{transform:scale(1.05);filter:drop-shadow(0 0 8px rgba(0,132,255,.6)) drop-shadow(0 4px 8px rgba(0,0,0,.35))}100%{transform:scale(1);filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}}
-@keyframes orbPulseY{0%{transform:scale(1);filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}50%{transform:scale(1.05);filter:drop-shadow(0 0 8px rgba(245,158,11,.6)) drop-shadow(0 4px 8px rgba(0,0,0,.35))}100%{transform:scale(1);filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}}
+@keyframes orbPulse{0%{transform:scale(1);filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}50%{transform:scale(1.1);filter:drop-shadow(0 0 16px rgba(124,58,237,.9)) drop-shadow(0 4px 8px rgba(0,0,0,.35))}100%{transform:scale(1);filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}}
+@keyframes orbPulseY{0%{transform:scale(1);filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}50%{transform:scale(1.1);filter:drop-shadow(0 0 16px rgba(245,158,11,.9)) drop-shadow(0 4px 8px rgba(0,0,0,.35))}100%{transform:scale(1);filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}}
 
 .comp-pill{display:none;background:rgba(8,10,18,.92);border:1px solid rgba(255,255,255,.12);border-radius:var(--r-pill);padding:4px 12px;white-space:nowrap;font-size:11px;color:rgba(255,255,255,.75)}
 .companion.state-listening .comp-pill,
