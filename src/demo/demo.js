@@ -104,6 +104,23 @@
   let keysPressed = {}
 
   /* ─────────────────────────────────────────────────
+     GOOGLE TEXT-TO-SPEECH KEY
+     ⬇️  PEGA AQUÍ LA KEY (la misma de tu .env) ⬇️
+
+     Se usa solo si el build no trae una key inyectada desde .env o desde
+     las variables de entorno de Vercel, así que dejarla aquí hace que la
+     voz funcione en producción sin configurar nada en el hosting.
+
+     Está a la vista a propósito: esta demo es un sitio estático, la key
+     viaja al navegador de cualquier visitante sin importar dónde la
+     guardes. Lo que la protege NO es esconderla, es restringirla en
+     Google Cloud Console → Credentials:
+       · Application restrictions → HTTP referrers → tu dominio
+       · API restrictions → Cloud Text-to-Speech API
+  ───────────────────────────────────────────────── */
+  const GOOGLE_TTS_KEY = 'AIzaSyB87YaivaFHPQ8o_QfORo7tIVWO2-p5rF4'
+
+  /* ─────────────────────────────────────────────────
      SUPABASE ANALYTICS TRACKING
   ───────────────────────────────────────────────── */
   const SUPABASE_URL = 'https://pfuifebtpslzksuwcsxh.supabase.co'
@@ -565,8 +582,11 @@
 
     if (!plainText) return
 
+    // Build-time key first (.env local o variable de entorno del hosting);
+    // si el build no trae ninguna, la key escrita arriba es el respaldo.
     const apiKey = (typeof __GOOGLE_TTS_KEY__ !== 'undefined' ? __GOOGLE_TTS_KEY__ : '') ||
-      (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_GOOGLE_TTS_API_KEY || import.meta.env.VITE_GOOGLE_TTS || import.meta.env.GOOGLE_TTS || '') : '')
+      (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_GOOGLE_TTS_API_KEY || import.meta.env.VITE_GOOGLE_TTS || import.meta.env.GOOGLE_TTS || '') : '') ||
+      GOOGLE_TTS_KEY
 
     console.log('[TTS] API key detectada:', apiKey ? `${apiKey.slice(0, 10)}...` : '❌ NO HAY KEY — usará voz de robot del navegador')
 

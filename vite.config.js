@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const googleTtsKey = env.GOOGLE_TTS || env.GOOGLE_TTS_API_KEY || env.VITE_GOOGLE_TTS_API_KEY || env.VITE_GOOGLE_TTS || env.GOOGLE_API_KEY || ''
 
   if (!googleTtsKey) {
-    console.warn('\n[vite] ⚠️  No se encontró GOOGLE_TTS en .env — la demo hablará con la voz sintética del navegador (masculina/robótica), no con la voz neural de Google.\n')
+    console.warn('\n[vite] ℹ️  No se encontró GOOGLE_TTS en el entorno — se usará la key escrita en demo.js (GOOGLE_TTS_KEY). Si esa también está vacía, la demo hablará con la voz sintética del navegador.\n')
   }
 
   return {
