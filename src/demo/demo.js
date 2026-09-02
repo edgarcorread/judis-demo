@@ -579,6 +579,9 @@
     let plainText = tempDiv.textContent || tempDiv.innerText || ''
     plainText = plainText.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/\s+/g, ' ').trim()
     plainText = plainText.replace(/j\.?\s*u\.?\s*d\.?\s*i\.?\s*s\.?/gi, 'Yudis')
+    // En pantalla el tiempo se muestra como "12.4s", pero leído en voz alta
+    // eso suena como la letra ese: para hablar tiene que decir "segundos".
+    plainText = plainText.replace(/(\d+(?:[.,]\d+)?)\s*s\b/gi, '$1 segundos')
 
     if (!plainText) return
 
