@@ -435,13 +435,60 @@
   }
 
   /* ─────────────────────────────────────────────────
+     ACTIVATE / DEACTIVATE — the "J.U.D.I.S activa" pill
+     is a switch: clicking it turns her off, clicking it
+     again brings her back.
+  ───────────────────────────────────────────────── */
+  function setJudisActive(active) {
+    document.querySelectorAll('.luzia-pill-nav').forEach(pill => {
+      const dot = pill.querySelector('.luzia-dot-on, .luzia-dot-off')
+      if (dot) dot.className = active ? 'luzia-dot-on' : 'luzia-dot-off'
+      const txt = pill.querySelector('span:last-child')
+      if (txt) txt.textContent = active ? 'J.U.D.I.S activa' : 'J.U.D.I.S inactiva'
+    })
+
+    const walletCardEl = document.getElementById('wallet-card')
+    const enableBtn = document.getElementById('btn-enable-luzia')
+    if (walletCardEl) walletCardEl.classList.toggle('enabled', active)
+    if (enableBtn) enableBtn.textContent = active ? 'Habilitado' : 'Sí, habilitar'
+
+    // The labels above are synced on every call; the rest only runs on a
+    // real change of state.
+    if (active) {
+      if (!isJudisEnabled) enableJudisCompanion()
+      return
+    }
+    if (!isJudisEnabled) return
+
+    // Off: stop whatever she is doing and erase what she drew on screen
+    if (isHotkeyActive) cancelRecordingForDrag()
+    hideSpeechBubble()
+    disableJudisCompanion()
+    document.querySelectorAll('.hotspot-ring, .hotspot-ring-2, .hotspot-label, .hotspot-arrow')
+      .forEach(el => el.remove())
+  }
+
+  function toggleJudis() {
+    setJudisActive(!isJudisEnabled)
+  }
+
+  /* ─────────────────────────────────────────────────
      COMPANION STATE MANAGEMENT
   ───────────────────────────────────────────────── */
   function updateCompanionState(state) {
     companionState = state
     if (!companionEl) return
 
-    companionEl.className = `companion following state-${state}`
+    // Rebuilding the class list wholesale would drop the flags that control
+    // visibility, the entrance animation and the mobile side, so they get
+    // re-applied here. Without the 'off' flag a TTS callback landing after a
+    // deactivation would pop the rombo back onto the screen.
+    const classes = ['companion', 'following', `state-${state}`]
+    if (!isJudisEnabled) classes.push('off')
+    if (companionEl.classList.contains('entrance-anim')) classes.push('entrance-anim')
+    if (companionEl.classList.contains('side-right')) classes.push('side-right')
+    companionEl.className = classes.join(' ')
+
     const pillTxt = companionEl.querySelector('.comp-pill-txt')
 
     const statusTexts = {
@@ -1783,13 +1830,30 @@
       })
     }
 
+    // The "J.U.D.I.S activa" pill works as a switch in both directions
+    document.querySelectorAll('.luzia-pill-nav').forEach(pill => {
+      pill.addEventListener('click', (e) => {
+        e.preventDefault()
+        toggleJudis()
+      })
+      pill.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        toggleJudis()
+      })
+    })
+
     // "Sí, habilitar" card — this is where J.U.D.I.S enters the demo
     const enableBtn = document.getElementById('btn-enable-luzia')
-    const walletCardEl = document.getElementById('wallet-card')
     if (enableBtn) {
       enableBtn.addEventListener('click', () => {
-        if (walletCardEl) walletCardEl.classList.add('enabled')
-        enableBtn.textContent = 'Habilitado'
+        // Coming back after a deactivation: just switch her on again
+        if (flowStep >= 6) {
+          setJudisActive(true)
+          return
+        }
+
+        setJudisActive(true)
         saveAnalytics({
           max_section: 3,
           is_luzia_enabled: true
