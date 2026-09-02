@@ -911,6 +911,13 @@
     karaokeRaf = requestAnimationFrame(tick)
   }
 
+  // How long a message needs to stay on screen to be read comfortably,
+  // roughly the pace of someone reading Spanish out loud.
+  function readingTimeFor(plainText) {
+    const chars = (plainText || '').trim().length
+    return Math.min(11000, Math.max(2400, 900 + chars * 62))
+  }
+
   function hideSpeechBubble() {
     const bubble = companionEl ? companionEl.querySelector('.comp-bubble') : null
     if (bubble) bubble.classList.add('hidden')
@@ -950,13 +957,21 @@
       // the message must still be readable.
       karaokeSafetyTimer = setTimeout(() => revealAllWords(words), 2800)
 
-      return speakText(text, (durationMs) => {
+      // Whoever awaits this message also waits at least as long as it takes
+      // to read it. Without this, a silent environment resolves the promise
+      // almost instantly and the guided steps flash by unreadably.
+      const readMs = readingTimeFor(answer ? answer.textContent : '')
+      const readable = new Promise(resolve => setTimeout(resolve, readMs))
+
+      const spoken = speakText(text, (durationMs) => {
         if (myGen !== bubbleGen) return
         startKaraoke(words, durationMs)
       }).then(() => {
         revealAllWords(words)
         if (myGen === bubbleGen) clearKaraoke()
       })
+
+      return Promise.all([spoken, readable]).then(() => {})
     }
 
     if (bubble) bubble.classList.add('hidden')
@@ -974,6 +989,37 @@
     return window.innerWidth <= 600
   }
 
+  // Browsers refuse to play any sound until the visitor has interacted with
+  // the page. On localhost that permission is usually already granted from
+  // previous visits, which is why the intro speaks right away there and stays
+  // mute on a freshly deployed domain. So instead of narrating to an empty
+  // room, ask for a click first and only then start talking.
+  function waitForAudioPermission() {
+    const ctx = getAudioContext()
+    if (ctx && ctx.state === 'running') return Promise.resolve()
+
+    updateCompanionBubble(
+      isMobileViewport()
+        ? '👋 Toca la pantalla para escucharme.'
+        : '👋 Haz clic en cualquier parte para escucharme.',
+      false
+    )
+
+    return new Promise(resolve => {
+      const events = ['click', 'touchend', 'keydown']
+      const go = () => {
+        events.forEach(ev => document.removeEventListener(ev, go))
+        const ac = getAudioContext()
+        if (ac && ac.state === 'suspended') {
+          ac.resume().then(resolve).catch(() => resolve())
+          return
+        }
+        resolve()
+      }
+      events.forEach(ev => document.addEventListener(ev, go, { passive: true }))
+    })
+  }
+
   // Each step awaits the TTS to finish playing before advancing, so the
   // voice never gets cut off mid-sentence by the next message.
   async function advanceFlow(toStep) {
@@ -981,9 +1027,11 @@
     flowStep = toStep
 
     switch (toStep) {
-      case 1: // The rombo shows up with its entrance animation
+      case 1: // The rombo shows up and waits until it can actually be heard
         enableJudisCompanion()
-        setTimeout(() => advanceFlow(2), 1500)
+        waitForAudioPermission().then(() => {
+          setTimeout(() => advanceFlow(2), 600)
+        })
         break
 
       case 2: // She introduces herself
