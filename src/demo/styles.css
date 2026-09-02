@@ -192,8 +192,36 @@ body{
   pointer-events:auto;transition:opacity .25s;
   bottom:40px;right:40px;
 }
-.companion.off{opacity:0;pointer-events:none}
+.companion.off{opacity:0;pointer-events:none;transform:scale(0.3)}
 .companion.following{position:fixed;bottom:auto;right:auto}
+
+/* Rombo entrance animation — companion starts scaled down and invisible,
+   then pops in with a gentle spring effect when J.U.D.I.S activates. */
+@keyframes companionEntrance {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.companion.entrance-anim {
+  animation: companionEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Final CTA description */
+.final-desc {
+  font-size: 15px;
+  color: var(--txt2);
+  line-height: 1.6;
+  margin-bottom: 28px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Schedule button in final card */
+.schedule-btn {
+  max-width: 280px;
+  margin: 0 auto;
+}
 
 .comp-top{display:flex;align-items:center;gap:8px;height:28px;flex-shrink:0}
 
@@ -247,6 +275,13 @@ body{
 .comp-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);flex:1}
 .comp-hint{font-size:10px;color:rgba(255,255,255,.25);white-space:nowrap}
 .comp-answer{padding:0 12px 12px;font-size:13px;color:#fff;line-height:1.55;word-break:break-word;white-space:pre-wrap}
+/* Palabras que se encienden al ritmo de la voz de J.U.D.I.S */
+.comp-word{opacity:.32;transition:opacity .22s ease,text-shadow .22s ease}
+.comp-word.spoken{opacity:1;text-shadow:0 0 12px rgba(140,170,255,.35)}
+@media(prefers-reduced-motion:reduce){
+  .comp-word{opacity:1;transition:none}
+  .comp-word.spoken{text-shadow:none}
+}
 .comp-heard{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:6px;font-style:italic}
 .comp-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:rgba(255,255,255,.4);margin-top:6px}
 
